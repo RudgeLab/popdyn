@@ -1,3 +1,4 @@
+import os
 import numpy as np
 from skimage.io import imread, imsave
 import matplotlib.pyplot as plt
@@ -7,21 +8,30 @@ from skimage.transform import warp_polar
 from skimage.transform import warp, EuclideanTransform
 from scipy.io import savemat
 
-im = imread('10x_1.0x_pAAA_TiTweez_1_MMStack_Pos8.ome.tif')
+path = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be/Tweez scope/2023_11_28'
+fname = '2023_11_28_10x_1.0x_pAAA_TiTweez_Pos1.ome.tif'
+folder_res = 'results'
+folder_fluo = 'fluo'
+
+path_im = os.path.join(path, fname)
+path_res = os.path.join(path, folder_res)
+path_fluo = os.path.join(path, folder_fluo)
+
+im = imread(path_im)
 im = im.astype(float)
-im = im.transpose([0,2,3,1])
+#im = im.transpose([0,2,3,1])
 nt,nx,ny,nc = im.shape
 print(im.shape)
 
-edt = np.load('results/edt.npy')
+edt = np.load(os.path.join(path_res, 'edt.npy'))
 
-area = np.load('results/area.npy')
+area = np.load(os.path.join(path_res, 'area.npy'))
 radius = np.sqrt(area/np.pi)
 dsarea = savgol_filter(area, 21, 3, deriv=1)
 dsradius = savgol_filter(radius, 21, 3, deriv=1)
 sradius = savgol_filter(radius, 21, 3)
-savemat('results/sradius.mat', {'sradius':sradius})
-savemat('results/dsradius.mat', {'dsradius':dsradius})
+savemat(os.path.join(path_res, 'sradius.mat'), {'sradius':sradius})
+savemat(os.path.join(path_res, 'dsradius.mat'), {'dsradius':dsradius})
 
 idx = np.where(dsradius<0.25)[0]
 tmin = 0 #idx.min()
@@ -66,10 +76,12 @@ edt = edt[:,xmin:xmax,ymin:ymax]
 nt,nx,ny = edt.shape
 x,y = np.meshgrid(np.arange(ny), np.arange(nx))
 
-ph = im[:,xmin:xmax,ymin:ymax,1]
+# change phase channel index
+ph = im[:,xmin:xmax,ymin:ymax,3]
 
 # BG correction and gaussian smoothing
-fluo = im[:,:,:,2:]
+# change fluo channels indexing
+fluo = im[:,:,:,:3]
 nt,nx,ny,nc = fluo.shape
 bg = fluo[0,:100:,:100,:].mean(axis=(1,2))
 for t in range(nt):
@@ -85,8 +97,8 @@ sfluo = savgol_filter(fluo, 31, 3, axis=0)
 dsfluo = savgol_filter(fluo, 31, 3, deriv=1, axis=0)
 #np.save('results/sfluo.npy', sfluo)
 #np.save('results/dsfluo.npy', dsfluo)
-savemat('results/sfluo.mat', {'sfluo':sfluo})
-savemat('results/dsfluo.mat', {'dsfluo':dsfluo})
+savemat(os.path.join(path_res, 'sfluo.mat'), {'sfluo':sfluo})
+savemat(os.path.join(path_res, 'dsfluo.mat'), {'dsfluo':dsfluo})
 
 del(fluo)
 del(im)
@@ -127,7 +139,7 @@ for t in range(nt):
         plt.imshow(tcdsfluo)
         plt.colorbar()
     plt.tight_layout()
-    plt.savefig('dsfluo_%04d.png'%t)
+    plt.savefig(os.path.join(path_fluo, 'dsfluo_%04d.png'%t))
     plt.close()
 
 for t in range(nt):
@@ -139,7 +151,7 @@ for t in range(nt):
         plt.imshow(tcsfluo)
         plt.colorbar()
     plt.tight_layout()
-    plt.savefig('sfluo_%04d.png'%t)
+    plt.savefig(os.path.join(path_fluo, 'sfluo_%04d.png'%t))
     plt.close()
 
 for t in range(nt):
@@ -160,7 +172,7 @@ for t in range(nt):
     plt.subplot(1, nc+2, nc+2)
     plt.imshow(nter)
     plt.tight_layout()
-    plt.savefig('er_%04d.png'%t)
+    plt.savefig(os.path.join(path_fluo, 'er_%04d.png'%t))
     plt.close()
 
 '''
