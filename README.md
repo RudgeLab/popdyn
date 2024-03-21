@@ -1,2 +1,2 @@
 # pop-dyn
-Population dynamics
+Quantitative population dynamics

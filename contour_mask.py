@@ -46,7 +46,7 @@ for t in range(nt):
     init[:,0] = x
     init[:,1] = y
 
-    # Gaussian blurring to smooth the image
+    # Gaussian blur to smooth the image
     # adjust the initial contour to fit the actual boundary of the colony
     # generates the vertex coordinates of the colony
     snake = active_contour(gaussian(f, 3, preserve_range=False),
@@ -75,3 +75,10 @@ for t in range(nt):
     plt.close()
 
 imsave(path_masks, mask_out>0)
+
+
+# parameters to play with:
+# gaussian
+# active_contour
+# binary erosion
+# extra radius
