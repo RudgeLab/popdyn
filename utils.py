@@ -42,6 +42,16 @@ def make_video(images_folder, video_name):
 
     video.release()
 
+def bg_corr(im, rmin, rmax, cmin, cmax):
+    # now it makes bg correction using just the first pixel because of later scattering
+    bg = im[0,rmin:rmax, cmin:cmax,:].mean(axis=(1,2))
+    nt,nx,ny,nc = im.shape
+    for t in range(nt):
+        for c in range(nc):
+            im[t,:,:,c] = im[t,:,:,c] - bg[c]
+    im[im<0] = 0
+    return im
+
 def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks):
     nt,nx,ny = im_ph.shape
     mask_out = np.zeros((nt,) + (nx,ny))
@@ -94,3 +104,46 @@ def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_mas
     imsave(path_masks, mask_out>0)
     make_video(os.path.join(path, folder_masks,f"temp_pos{pos}"), 
            os.path.join(path, folder_masks,f"contour_pos{pos}.avi"))
+
+def average_growth(im_fluo, path_masks, step, pos, path, folder_results, folder_graphs):
+    
+    folder_pos = os.path.join(path, folder_results,f"pos{pos}")
+    if not os.path.exists(folder_pos):
+        os.makedirs(folder_pos)
+
+    folder_pos_graph = os.path.join(path, folder_graphs,f"pos{pos}")
+    if not os.path.exists(folder_pos_graph):
+        os.makedirs(folder_pos_graph)
+    
+    # BG correction using first frame, too much scattering in later frames
+    im_fluo = bg_corr(im_fluo, 0, 100, 0, 100)
+
+    mask_all = imread(path_masks)
+    mask_all = mask_all>0
+    nt,nx,ny = mask_all.shape
+    area = mask_all[:nt*step:step,:,:].sum(axis=(1,2))
+    radius = np.sqrt(area / np.pi)
+
+    
+    vfront = savgol_filter(radius, 11, 3, deriv=1)
+    exprate = savgol_filter(area, 11, 3, deriv=1) / savgol_filter(area, 11, 3)
+    edt = np.zeros_like(mask_all).astype(float)
+    for t in range(nt):
+        edt[t,:,:] = distance_transform_edt(mask_all[t,:,:])
+
+    np.save(os.path.join(path, folder_results, folder_pos, 'radius.npy'), radius)
+    np.save(os.path.join(path, folder_results, folder_pos, 'area.npy'), area) 
+    np.save(os.path.join(path, folder_results, folder_pos, 'vfront.npy'), vfront)
+    np.save(os.path.join(path, folder_results, folder_pos, 'expansion_rate.npy'), exprate)
+    np.save(os.path.join(path, folder_results, folder_pos, 'edt.npy'),  edt)
+
+    plt.subplot(4,1,1)
+    plt.plot(area)
+    plt.subplot(4,1,2)
+    plt.plot(radius)
+    plt.subplot(4,1,3)
+    plt.plot(vfront)
+    plt.subplot(4,1,4)
+    plt.plot(exprate)
+    plt.savefig(os.path.join(path, folder_results, folder_pos_graph, 'a_r_vf_exp.png'))
+    plt.close()

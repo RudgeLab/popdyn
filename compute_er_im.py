@@ -23,6 +23,16 @@ im = im.astype(float)
 nt,nx,ny,nc = im.shape
 print(im.shape)
 
+###### OLD
+# Compute mean fluo at each time point
+for c in range(3):
+    cim = im[:,:,:,c] 
+    cim[mask_all==0] = np.nan
+    im[:,:,:,c] = cim
+f = np.nanmean(im, axis=(1,2))
+#np.save(os.path.join(path, folder_results, folder_pos, 'mean_fluo.npy'),  f)
+##########
+
 edt = np.load(os.path.join(path_res, 'edt.npy'))
 
 area = np.load(os.path.join(path_res, 'area.npy'))

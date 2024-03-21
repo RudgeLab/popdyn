@@ -85,6 +85,7 @@ folder_graphs = 'graphs'
 yfp_chn = 0
 cfp_chn = 1
 ph_chn = 2
+fluo_chns = 2
 
 # create folders
 if not os.path.exists(os.path.join(path, folder_masks)):
@@ -107,22 +108,22 @@ for pos in colonies.keys():
 
     path_im = os.path.join(path, fname)
     path_masks = os.path.join(path, folder_masks, fname_mask)
-
-
-    ###############
-    # contour mask
-    ###############
+    
     start_frame = 0
     step = 1
 
     im_all = imread(path_im)
-    im_ph = im_all[:,:,:,ph_chn]
-    im_ph = im_ph.astype(float)
+    im_ph = im_all[:,:,:,ph_chn].astype(float)
+    im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
+    ###############
+    # contour mask
+    ###############
+
 
     cx = metadata[scope_name][exp_date][str(pos)]['cx']
     cy = metadata[scope_name][exp_date][str(pos)]['cy']
+    # TO DO: 'radius' is the guest to start the segmentation
     radius = metadata[scope_name][exp_date][str(pos)]['radius']
-    print(f"cx: {cx}, cy: {cy}, radius: {radius}")
 
-    contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks)
-
+    #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks)
+    average_growth(im_fluo, path_masks, step, pos, path, folder_results, folder_graphs)
