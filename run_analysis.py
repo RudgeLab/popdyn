@@ -19,11 +19,18 @@ from utils import *
 # Functions
 #########################
 def get_params_for_date(microscope, date, metadata):
-    """Retrieve all parameters for a given microscope and date."""
+    """Retrieves all parameters for a given microscope and date.
+    
+    Parameters:
+    - microscope (string): Name of the microscope that performed the experiment.
+    - date (string): Date of the experimental data to be analyzed.
+    - metadata (dict): Dictionary that contains experimental metadata
+
+    Returns:
+    - dictionary: Information of the colonies selected for analysis: Pos, cx, cy, radius.
+    """
     try:
-        date_data = metadata[microscope][date]
-        for pos, data in date_data.items():
-            print(f"{microscope} for {date}: Pos{pos}, {data}")
+        return metadata[microscope][date]
     except KeyError:
         print("Data not found for the given microscope and date.")
 
@@ -32,11 +39,11 @@ def get_params_for_date(microscope, date, metadata):
 ##################
 
 # experiments metadata
-# TO DO: store it in a file
+# TO DO: store in a file
 metadata = {
     'Tweez scope': {
         '2023_11_15': {
-            '0': {'cx': 524, 'cy': 480, 'radius': 100},
+            '0': {'cx': 480, 'cy': 524, 'radius': 100}, #originally taken the other way around, (x, y) instead of (row, col)
             '1': {'cx': 505, 'cy': 520, 'radius': 100},
             '3': {'cx': 510, 'cy': 510, 'radius': 100},
             # More positions
@@ -65,33 +72,57 @@ metadata = {
 ##################
 
 #folder = '/home/guillermo/Microscopy/Ti scope'
-folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be/Tweez scope'
-exp_date = '2023_11_28'
-path = os.path.join(folder, exp_date)
+folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
+scope_name = 'Tweez scope'
+path_scope = os.path.join(folder, scope_name)
+exp_date = '2023_11_15'
+path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
+folder_results = 'results'
 folder_fluo = 'fluo'
 folder_graphs = 'graphs'
 
-pos = 1
-fname = f'2023_11_28_10x_1.0x_pAAA_TiTweez_Pos{pos}.ome.tif'
-fname_mask = 'mask_' + fname
+yfp_chn = 0
+cfp_chn = 1
+ph_chn = 2
 
-path_im = os.path.join(path, fname)
-path_masks = os.path.join(path, folder_masks, fname_mask)
+# create folders
+if not os.path.exists(os.path.join(path, folder_masks)):
+    os.makedirs(os.path.join(path, folder_masks))
+if not os.path.exists(os.path.join(path, folder_results)):
+    os.makedirs(os.path.join(path, folder_results))
+if not os.path.exists(os.path.join(path, folder_fluo)):
+    os.makedirs(os.path.join(path, folder_fluo))
+if not os.path.exists(os.path.join(path, folder_graphs)):
+    os.makedirs(os.path.join(path, folder_graphs))
+
+# call get_params_for_date and then make a loop
+colonies = get_params_for_date(scope_name, exp_date, metadata)
+
+for pos in colonies.keys():
+#for pos in range(1,2):
+    # TO DO: fname needs to be more modular
+    fname = f'{exp_date}_10x_1.0x_pLPT20&41_single_TiTweez_Pos{pos}.ome.tif'
+    fname_mask = 'mask_' + fname
+
+    path_im = os.path.join(path, fname)
+    path_masks = os.path.join(path, folder_masks, fname_mask)
 
 
-###############
-# contour mask
-###############
-start_frame = 0
-step = 1
+    ###############
+    # contour mask
+    ###############
+    start_frame = 0
+    step = 1
 
-im_all = imread(path_im)
-im_ph = im_all[:,:,:,3]
-im_ph = im_ph.astype(float)
+    im_all = imread(path_im)
+    im_ph = im_all[:,:,:,ph_chn]
+    im_ph = im_ph.astype(float)
 
-nt,nx,ny = im_ph.shape
-# input manually from image inspection
+    cx = metadata[scope_name][exp_date][str(pos)]['cx']
+    cy = metadata[scope_name][exp_date][str(pos)]['cy']
+    radius = metadata[scope_name][exp_date][str(pos)]['radius']
+    print(f"cx: {cx}, cy: {cy}, radius: {radius}")
 
-cx,cy = 520,520
-radius = 100
+    contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks)
+

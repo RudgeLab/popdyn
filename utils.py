@@ -1,7 +1,9 @@
 import os
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import cv2
+matplotlib.use('Agg')
 
 from skimage.io import imread, imsave
 from skimage.measure import find_contours
@@ -17,33 +19,42 @@ from scipy.optimize import fmin, least_squares
 from scipy.signal import savgol_filter
 from scipy.io import savemat
 
-# función para hacer el video: toma archivos .png y construye un video
-# recibe como parámetros image_folder (carpeta donde están los archivos .png guardados) 
-#y video_name (nombre archivo de video)
-def make_video(image_folder, video_name):
-    images = [img for img in os.listdir(image_folder) if img.endswith(".png")]
+def make_video(images_folder, video_name):
+    """
+    Makes a video from a sequence of png images.
+    
+    Parameters:
+    - images_folder (string): Folder that contains the png files.
+    - video_name (string): Date of the experimental data to be analyzed.
+
+    Returns:
+    - 
+    """
+    images = [img for img in os.listdir(images_folder) if img.endswith(".png")]
     images.sort()
-    frame = cv2.imread(os.path.join(image_folder, images[0]))
+    frame = cv2.imread(os.path.join(images_folder, images[0]))
     height, width, layers = frame.shape
 
     video = cv2.VideoWriter(video_name, 0, 7, (width,height))
 
     for image in images:
-        video.write(cv2.imread(os.path.join(image_folder, image)))
+        video.write(cv2.imread(os.path.join(images_folder, image)))
 
     video.release()
 
-def contour_mask(im_ph, start_frame, step, cx, cy, radius):
+def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks):
     nt,nx,ny = im_ph.shape
     mask_out = np.zeros((nt,) + (nx,ny))
-
+    temp_folder = os.path.join(path, folder_masks,f"temp_pos{pos}")
+    if not os.path.exists(temp_folder):
+        os.makedirs(temp_folder)
+    
     for t in range(nt):
         print(f'Processing frame {t+1}/{nt}')
         
         # normalize pixel values to [0, 1]
         f = im_ph[start_frame + t*step,:,:]
         f = (f - f.min()) / (f.max() - f.min())
-        
         # set initial contour as a circle around initial guess (cx, cy, radius)
         ang = np.linspace(0, 2*np.pi, 100)
         x = radius * np.cos(ang) + cx
@@ -77,5 +88,9 @@ def contour_mask(im_ph, start_frame, step, cx, cy, radius):
         plt.imshow(f, cmap='gray')
         plt.plot(init[:,1], init[:,0], 'r--')
         plt.plot(snake[:,1], snake[:,0], 'g-')
-        plt.savefig(os.path.join(path, folder_masks,'contour_%03d.png'%t))
+        plt.savefig(os.path.join(path, folder_masks,f"temp_pos{pos}",'contour_%03d.png'%t))
         plt.close()
+
+    imsave(path_masks, mask_out>0)
+    make_video(os.path.join(path, folder_masks,f"temp_pos{pos}"), 
+           os.path.join(path, folder_masks,f"contour_pos{pos}.avi"))

@@ -10,6 +10,3 @@ dependencies:
   - scipy
   - opencv
 #  - python=3.8
-
-# to create the environment using this file, do:
-# conda env create -f popdyn.yml
