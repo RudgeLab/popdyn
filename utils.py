@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import cv2
 
 from skimage.io import imread, imsave
 from skimage.measure import find_contours
@@ -15,6 +16,22 @@ from scipy.ndimage import distance_transform_edt
 from scipy.optimize import fmin, least_squares
 from scipy.signal import savgol_filter
 from scipy.io import savemat
+
+# función para hacer el video: toma archivos .png y construye un video
+# recibe como parámetros image_folder (carpeta donde están los archivos .png guardados) 
+#y video_name (nombre archivo de video)
+def make_video(image_folder, video_name):
+    images = [img for img in os.listdir(image_folder) if img.endswith(".png")]
+    images.sort()
+    frame = cv2.imread(os.path.join(image_folder, images[0]))
+    height, width, layers = frame.shape
+
+    video = cv2.VideoWriter(video_name, 0, 7, (width,height))
+
+    for image in images:
+        video.write(cv2.imread(os.path.join(image_folder, image)))
+
+    video.release()
 
 def contour_mask(im_ph, start_frame, step, cx, cy, radius):
     nt,nx,ny = im_ph.shape
