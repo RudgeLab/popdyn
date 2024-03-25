@@ -1,5 +1,5 @@
 # pop-dyn
-Quantitative population dynamics
+## Quantitative population dynamics
 
 You need a package manager, for example Anaconda.
 

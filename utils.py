@@ -96,7 +96,8 @@ def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_mas
         cx,cy = snake.mean(axis=0)
         area = np.sum(mnew)
         # empirical adjustment of 50 so the contour slightly exceeds the actual boundary of the colony
-        radius = np.sqrt(area/np.pi) + 50
+        #radius = np.sqrt(area/np.pi) + 50
+        radius = np.sqrt(area/np.pi) + 35
 
         plt.imshow(f, cmap='gray')
         plt.plot(init[:,1], init[:,0], 'r--')
