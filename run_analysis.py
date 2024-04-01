@@ -48,12 +48,12 @@ with open('metadata.json') as f:
 # analysis params
 ##################
 
-folder = '/home/guillermo/Microscopy'
-#folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
-scope_name = 'Ti scope'
-#scope_name = 'Tweez scope'
+#folder = '/home/guillermo/Microscopy'
+folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
+#scope_name = 'Ti scope'
+scope_name = 'Tweez scope'
 path_scope = os.path.join(folder, scope_name)
-exp_date = '2023_11_15'
+exp_date = '2023_12_04'
 path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
 folder_results = 'results'
@@ -61,19 +61,20 @@ folder_fluo = 'fluo'
 folder_graphs = 'graphs'
 
 ### params for repressilator single reporter
+"""
 yfp_chn = 0
 cfp_chn = 1
 ph_chn = 2
 fluo_chns = 2
-
-### params for repressilator triple reporter and pAAA
 """
+### params for repressilator triple reporter and pAAA
+#"""
 rfp_chn = 0
 yfp_chn = 1
 cfp_chn = 2
 ph_chn = 3
 fluo_chns = 3
-"""
+#"""
 
 # create folders that will store analysis results
 if not os.path.exists(os.path.join(path, folder_masks)):
@@ -91,10 +92,14 @@ colonies = get_params_for_date(scope_name, exp_date, metadata)
 # loop to perform the functions contour_mask, average_growth, compute_er to each
 # position (colony) selected from an experiment
 #for pos in colonies.keys():
-for pos in [0]:#, 17, 19]:
+for pos in [7,14,16,34]:
     # TO DO: fname needs to be more modular
-    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_single_TiTweez_Pos{pos}.ome.tif'
-    fname = f'{exp_date}_10x_1.0x_pLPT20&41_single_Ti_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_Ti_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_pLPT119&41_Ti_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_pLPT119&41_TiTweez_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_MC4100_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
+    fname = f'{exp_date}_10x_1.0x_MC4100_pLPT107&41_TiTweez_Pos{pos}.ome.tif'
     fname_mask = 'mask_' + fname
 
     path_im = os.path.join(path, fname)
@@ -103,7 +108,10 @@ for pos in [0]:#, 17, 19]:
     start_frame = 0
     step = 1
 
-    im_all = imread(path_im)
+    # TO DO: make this parametric
+    # for experiments with more than 216 frames
+    im_all = imread(path_im)[:216,:,:,:]
+    
     im_ph = im_all[:,:,:,ph_chn].astype(float)
     im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
     
@@ -114,8 +122,9 @@ for pos in [0]:#, 17, 19]:
     cx = metadata[scope_name][exp_date][str(pos)]['cy']
     # TO DO: 'radius' is the guest to start the segmentation, change this name
     radius = metadata[scope_name][exp_date][str(pos)]['radius']
+    radj = metadata[scope_name][exp_date][str(pos)]['radj']
 
-    contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks)
+    contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
     
     ###############
     # average_growth
@@ -123,22 +132,20 @@ for pos in [0]:#, 17, 19]:
 
     ###############
     # compute_er
-    #compute_er(im_all, pos, path, folder_results, ph_chn)
+    #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
 
     ###############
-
-    """
     # plot expression rate
-    folder_pos = os.path.join(path, folder_results, f"pos{pos}")
-    er = np.load(os.path.join(folder_pos, 'er.npy'))
-    edt = np.load(os.path.join(folder_pos, 'edt.npy'))
-    sfluo = np.load(os.path.join(folder_pos, 'sfluo.npy'))
-    dsfluo = np.load(os.path.join(folder_pos, 'dsfluo.npy'))
-    nt, nx, ny, nc = sfluo.shape
-    plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo)
+    #plot_er(im_ph, pos, path, folder_fluo, er, edt_reg, sfluo, dsfluo)
+    
+    ###############
     """
-
     # videos expression rate
-    #video_er()
-
-#def video_er():
+    vids = ["sfluo", "dsfluo", "er"]
+    for i in range(len(vids)):
+        path_ims = os.path.join(path, folder_fluo, f"pos{pos}", vids[i])
+        path_out = os.path.join(path, folder_results, f"pos{pos}_{vids[i]}.avi")
+        print(f"path_ims: {path_ims}")
+        print(f"path_out: {path_out}")
+        make_video(path_ims, path_out)
+    """

@@ -19,13 +19,14 @@ from scipy.optimize import fmin, least_squares
 from scipy.signal import savgol_filter
 from scipy.io import savemat
 
-def make_video(images_folder, video_name):
+def make_video(images_folder,  video_name):
     """
     Makes a video from a sequence of png images.
     
     Parameters:
     - images_folder (string): Folder that contains the png files.
-    - video_name (string): Date of the experimental data to be analyzed.
+    - word_cont (string): Word that the files contain.
+    - video_name (string): Name of the output file.
 
     Returns:
     - 
@@ -34,7 +35,6 @@ def make_video(images_folder, video_name):
     images.sort()
     frame = cv2.imread(os.path.join(images_folder, images[0]))
     height, width, layers = frame.shape
-
     video = cv2.VideoWriter(video_name, 0, 7, (width,height))
 
     for image in images:
@@ -54,7 +54,7 @@ def bg_corr(im, rmin, rmax, cmin, cmax):
 
     return im
 
-def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks):
+def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj):
     nt,nx,ny = im_ph.shape
     mask_out = np.zeros((nt,) + (nx,ny))
 
@@ -80,7 +80,9 @@ def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_mas
         # adjust the initial contour to fit the actual boundary of the colony
         # generates the vertex coordinates of the colony
         snake = active_contour(gaussian(f, 3, preserve_range=False),
-                        init, alpha=5e-3, beta=1e-6, gamma=0.001, w_edge=radius/50, w_line=0)
+                        # for Tweezers 12_06
+                        init, alpha=5e-3, beta=1e-6, gamma=0.001, w_edge=radius/30, w_line=0)
+    #                    init, alpha=5e-3, beta=1e-6, gamma=0.001, w_edge=radius/50, w_line=0)
 
         mnew = np.zeros_like(f)
         # generate the coordinates of the pixels inside the polygon defined by the vertex coordinates
@@ -97,7 +99,7 @@ def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_mas
         area = np.sum(mnew)
         # empirical adjustment of 50 so the contour slightly exceeds the actual boundary of the colony
         #radius = np.sqrt(area/np.pi) + 50
-        radius = np.sqrt(area/np.pi) + 35
+        radius = np.sqrt(area/np.pi) + radj
 
         plt.imshow(f, cmap='gray')
         plt.plot(init[:,1], init[:,0], 'r--')
@@ -180,19 +182,21 @@ def register(im, edt):
         #plt.close()
     return im, edt
 
-def compute_er(im, pos, path, folder_results, ph_chn):
+def compute_er(im, pos, path, folder_results, fname, ph_chn):
     folder_pos = os.path.join(path, folder_results, f"pos{pos}")
     nt, nx, ny, nc = im.shape
+    # TO DO: receive tmin and tmax as args
     tmin = 0
     tmax = nt
 
     area = np.load(os.path.join(folder_pos, 'area.npy'))
     radius = np.sqrt(area/np.pi)
-    # TO DO: not used nor saved
+
     dsarea = savgol_filter(area, 21, 3, deriv=1)
     sradius = savgol_filter(radius, 21, 3)
     dsradius = savgol_filter(radius, 21, 3, deriv=1)
 
+    np.save(os.path.join(folder_pos, 'dsarea.npy'), dsarea)
     np.save(os.path.join(folder_pos, 'sradius.npy'), sradius)
     np.save(os.path.join(folder_pos, 'dsradius.npy'), dsradius)
     #savemat(os.path.join(path_res, 'sradius.mat'), {'sradius':sradius})
@@ -205,15 +209,17 @@ def compute_er(im, pos, path, folder_results, ph_chn):
 
     # register image
     im, edt = register(im, edt)
+    edt_reg = edt
     # save im and edt registered
     np.save(os.path.join(folder_pos, 'im_reg.npy'), im)
-    np.save(os.path.join(folder_pos, 'edt_reg.npy'), edt)
+    #imsave(os.path.join(folder_pos, 'registered_' + fname), im)
+    np.save(os.path.join(folder_pos, 'edt_reg.npy'), edt_reg)
     
     # test
     #imsave(os.path.join(path, folder_results, folder_pos, 'im_reg.ome.tif'), im)
 
     # select a ROI of the image to analyze
-    y,x = np.meshgrid(np.arange(ny), np.arange(nx))
+    y,x = np.meshgrid(np.arange(nx), np.arange(ny))
     edt0 = edt[-1,:,:]
     xmin = x[edt0>0].min() - 32
     xmax = x[edt0>0].max() + 32
@@ -262,34 +268,38 @@ def compute_er(im, pos, path, folder_results, ph_chn):
     np.save(os.path.join(folder_pos, 'er.npy'), er)
     np.save(os.path.join(folder_pos, 'corr.npy'), corr)
 
+    return er, edt_reg, sfluo, dsfluo
+
 def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo):
     folder_pos = os.path.join(path, folder_fluo, f"pos{pos}")
     if not os.path.exists(folder_pos):
-        os.makedirs(folder_pos)    
+        os.makedirs(folder_pos)   
+    
+    if not os.path.exists(os.path.join(folder_pos, 'sfluo')):
+        os.makedirs(os.path.join(folder_pos, 'sfluo'))
+    if not os.path.exists(os.path.join(folder_pos, 'dsfluo')):
+        os.makedirs(os.path.join(folder_pos, 'dsfluo'))
+    if not os.path.exists(os.path.join(folder_pos, 'er')):
+        os.makedirs(os.path.join(folder_pos, 'er'))
 
     vmin = [0]*3
     vmax = np.nanmax(er, axis=(0,1,2))
 
     nt, nx, ny = edt.shape
-    y,x = np.meshgrid(np.arange(ny), np.arange(nx))
+    y,x = np.meshgrid(np.arange(nx), np.arange(ny))
     edt0 = edt[-1,:,:]
     xmin = x[edt0>0].min() - 32
     xmax = x[edt0>0].max() + 32
     ymin = y[edt0>0].min() - 32
     ymax = y[edt0>0].max() + 32
 
-    # TO DO: make edt.shape and ph.shape match with sfluo.shape 
-    edt = edt[:,xmin:(xmax+1),ymin:(ymax+1)]
-    ph = im_ph[:,xmin:(xmax+1),ymin:(ymax+1)]
-    #############################################
+    edt = edt[:,xmin:xmax,ymin:ymax]
+    ph = im_ph[:,xmin:xmax,ymin:ymax]
 
     nt, nx, ny = edt.shape
     _, _, _, nc = sfluo.shape
 
-    print(f"edt: {edt.shape}")
-    print(f"sfluo: {sfluo.shape}")
-    print(f"ph: {ph.shape}")
-
+    fluo_leg = ['YFP', 'CFP']
     for t in range(nt):
         print(f"Plotting dsfluo {t+1} / {nt}")
         plt.figure(figsize=(9,3))
@@ -297,10 +307,11 @@ def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo):
             plt.subplot(1,nc,c+1)
             tcdsfluo = dsfluo[t,:,:,c]
             tcdsfluo[edt[t,:,:]==0] = np.nan
+            plt.title(fluo_leg[c])
             plt.imshow(tcdsfluo)
             plt.colorbar()
         plt.tight_layout()
-        plt.savefig(os.path.join(folder_pos, 'dsfluo_%04d.png'%t))
+        plt.savefig(os.path.join(folder_pos, 'dsfluo', 'dsfluo_%04d.png'%t))
         plt.close()
 
     for t in range(nt):
@@ -310,21 +321,25 @@ def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo):
             plt.subplot(1,nc,c+1)
             tcsfluo = sfluo[t,:,:,c]
             tcsfluo[edt[t,:,:]==0] = np.nan
+            plt.title(fluo_leg[c])
             plt.imshow(tcsfluo)
             plt.colorbar()
         plt.tight_layout()
-        plt.savefig(os.path.join(folder_pos, 'sfluo_%04d.png'%t))
+        plt.savefig(os.path.join(folder_pos, 'sfluo', 'sfluo_%04d.png'%t))
         plt.close()
-
+        
+    leg = ['Phase','YFP','CFP','All fluo']
     for t in range(nt):
         print(f"Plotting er {t+1} / {nt}")
         plt.figure(figsize=(9,3))
         plt.subplot(1, nc+2, 1)
         plt.imshow(ph[t,:,:], cmap='gray')
+        plt.title(leg[0])
         nter = np.zeros((nx,ny,3))
         for c in range(nc):
             ntcer = np.zeros((nx,ny,3))
             plt.subplot(1,nc+2,c+2)
+            plt.title(leg[c+1])
             tcer = er[t,:,:,c]
             tcer[edt[t,:,:]==0] = np.nan
             #nter[:,:,c] = (tcer - np.nanmin(tcer)) / (np.nanmax(tcer)  - np.nanmin(tcer))
@@ -333,7 +348,8 @@ def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo):
             plt.imshow(ntcer)
             #plt.colorbar()
         plt.subplot(1, nc+2, nc+2)
+        plt.title(leg[-1])
         plt.imshow(nter)
         plt.tight_layout()
-        plt.savefig(os.path.join(folder_pos, 'er_%04d.png'%t))
+        plt.savefig(os.path.join(folder_pos, 'er', 'er_%04d.png'%t))
         plt.close()
