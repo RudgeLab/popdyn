@@ -270,7 +270,7 @@ def compute_er(im, pos, path, folder_results, fname, ph_chn):
 
     return er, edt_reg, sfluo, dsfluo
 
-def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo):
+def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo, fluo_chns):
     folder_pos = os.path.join(path, folder_fluo, f"pos{pos}")
     if not os.path.exists(folder_pos):
         os.makedirs(folder_pos)   
@@ -299,7 +299,13 @@ def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo):
     nt, nx, ny = edt.shape
     _, _, _, nc = sfluo.shape
 
-    fluo_leg = ['YFP', 'CFP']
+    if fluo_chns == 3:
+        fluo_leg = ['RFP', 'YFP', 'CFP']
+        leg = ['Phase','RFP', 'YFP','CFP','All fluo']
+    else:
+        fluo_leg = ['YFP', 'CFP']
+        leg = ['Phase','YFP','CFP','All fluo']
+
     for t in range(nt):
         print(f"Plotting dsfluo {t+1} / {nt}")
         plt.figure(figsize=(9,3))
@@ -328,7 +334,7 @@ def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo):
         plt.savefig(os.path.join(folder_pos, 'sfluo', 'sfluo_%04d.png'%t))
         plt.close()
         
-    leg = ['Phase','YFP','CFP','All fluo']
+    #leg = ['Phase','YFP','CFP','All fluo']
     for t in range(nt):
         print(f"Plotting er {t+1} / {nt}")
         plt.figure(figsize=(9,3))
