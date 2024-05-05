@@ -109,7 +109,7 @@ def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_mas
 
     imsave(path_masks, mask_out>0)
     make_video(os.path.join(path, folder_masks,f"temp_pos{pos}"), 
-           os.path.join(path, folder_masks,f"contour_pos{pos}.avi"))
+           os.path.join(path, folder_masks,f"pos{pos}_contour.avi"))
 
 def average_growth(path_masks, step, pos, path, folder_results, folder_graphs):
     
@@ -237,13 +237,17 @@ def compute_er(im, pos, path, folder_results, fname, ph_chn):
     fluo = im[:,:,:,:ph_chn]
     fluo = bg_corr(fluo, 0, 100, 0, 100)
 
+    print("BG done")
+
     fluo = fluo[:,xmin:xmax,ymin:ymax,:]
     nt,nx,ny,nc = fluo.shape
 
     sfluo = savgol_filter(fluo, 31, 3, axis=0)
     dsfluo = savgol_filter(fluo, 31, 3, deriv=1, axis=0)
+    print("savgol done to fluo")
     np.save(os.path.join(folder_pos, 'sfluo.npy'), sfluo)
     np.save(os.path.join(folder_pos, 'dsfluo.npy'), dsfluo)
+    print("fluo files saved")
     #savemat(os.path.join(path, folder_results, folder_pos, 'sfluo.mat'), {'sfluo':sfluo})
     #savemat(os.path.join(path, folder_results, folder_pos, 'dsfluo.mat'), {'dsfluo':dsfluo})
 
@@ -256,6 +260,7 @@ def compute_er(im, pos, path, folder_results, fname, ph_chn):
     corr = np.zeros((nt,))
     for t in range(nt):
         print(f'Computing correlations frame {t+1}/{nt}')
+        # TO DO: use edt_reg instead !!
         tedt = edt[t,:,:]
         x = er[t,:,:,0]
         y = er[t,:,:,1]
