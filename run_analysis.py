@@ -48,12 +48,12 @@ with open('metadata.json') as f:
 # analysis params
 ##################
 
-#folder = '/home/guillermo/Microscopy'
-folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
-#scope_name = 'Ti scope'
-scope_name = 'Tweez scope'
+folder = '/home/guillermo/Microscopy'
+#folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
+scope_name = 'Ti scope'
+#scope_name = 'Tweez scope'
 path_scope = os.path.join(folder, scope_name)
-exp_date = '2023_11_30'
+exp_date = '2023_12_08'
 path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
 folder_results = 'results'
@@ -91,17 +91,17 @@ colonies = get_params_for_date(scope_name, exp_date, metadata)
 
 # loop to perform the functions contour_mask, average_growth, compute_er to each
 # position (colony) selected from an experiment
-for pos in colonies.keys():
-#for pos in [6]:
+#for pos in colonies.keys():
+for pos in [23]: #[23,24,25,28,30,31,32,34]:
     # TO DO: fname needs to be more modular
     #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT20&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT119&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT119&41_TiTweez_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pLPT107&41_Ti_Pos{pos}.ome.tif'
+    fname = f'{exp_date}_10x_1.0x_pLPT107&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT107&41_TiTweez_Pos{pos}.ome.tif'
-    fname = f'{exp_date}_10x_1.0x_pAAA_TiTweez_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_pAAA_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pAAA_Ti_Pos{pos}.ome.tif'
     fname_mask = 'mask_' + fname
 
