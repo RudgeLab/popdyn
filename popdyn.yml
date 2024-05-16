@@ -9,4 +9,6 @@ dependencies:
   - pandas
   - scipy
   - opencv
-#  - python=3.8
+  - python=3.8
+  - tensorflow
+  - scikit-learn

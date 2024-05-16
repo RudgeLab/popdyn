@@ -48,12 +48,13 @@ with open('metadata.json') as f:
 # analysis params
 ##################
 
-folder = '/home/guillermo/Microscopy'
+#folder = '/home/guillermo/Microscopy'
 #folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
-scope_name = 'Ti scope'
-#scope_name = 'Tweez scope'
+folder = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
+#scope_name = 'Ti scope'
+scope_name = 'Tweez scope'
 path_scope = os.path.join(folder, scope_name)
-exp_date = '2023_12_08'
+exp_date = '2023_11_15'
 path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
 folder_results = 'results'
@@ -61,20 +62,20 @@ folder_fluo = 'fluo'
 folder_graphs = 'graphs'
 
 ### params for repressilator single reporter
-"""
+#"""
 yfp_chn = 0
 cfp_chn = 1
 ph_chn = 2
 fluo_chns = 2
-"""
-### params for repressilator triple reporter and pAAA
 #"""
+### params for repressilator triple reporter and pAAA
+"""
 rfp_chn = 0
 yfp_chn = 1
 cfp_chn = 2
 ph_chn = 3
 fluo_chns = 3
-#"""
+"""
 
 # create folders that will store analysis results
 if not os.path.exists(os.path.join(path, folder_masks)):
@@ -92,13 +93,13 @@ colonies = get_params_for_date(scope_name, exp_date, metadata)
 # loop to perform the functions contour_mask, average_growth, compute_er to each
 # position (colony) selected from an experiment
 #for pos in colonies.keys():
-for pos in [23]: #[23,24,25,28,30,31,32,34]:
+for pos in [1]: #[23,24,25,28,30,31,32,34]:
     # TO DO: fname needs to be more modular
-    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
+    fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT20&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT119&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT119&41_TiTweez_Pos{pos}.ome.tif'
-    fname = f'{exp_date}_10x_1.0x_pLPT107&41_Ti_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_pLPT107&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT107&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pAAA_TiTweez_Pos{pos}.ome.tif'
@@ -128,22 +129,22 @@ for pos in [23]: #[23,24,25,28,30,31,32,34]:
     radius = metadata[scope_name][exp_date][str(pos)]['radius']
     radj = metadata[scope_name][exp_date][str(pos)]['radj']
 
-    #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
+    contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
     
     ###############
     # average_growth
-    average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
+    #average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
 
     ###############
     # compute_er
-    er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
+    #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
 
     ###############
     # plot expression rate
-    plot_er(im_ph, pos, path, folder_fluo, er, edt_reg, sfluo, dsfluo, fluo_chns)
+    #plot_er(im_ph, pos, path, folder_fluo, er, edt_reg, sfluo, dsfluo, fluo_chns)
 
     ###############
-    #"""
+    """
     # videos expression rate
     vids = ["sfluo", "dsfluo", "er"]
     for i in range(len(vids)):
@@ -152,4 +153,4 @@ for pos in [23]: #[23,24,25,28,30,31,32,34]:
         print(f"path_ims: {path_ims}")
         print(f"path_out: {path_out}")
         make_video(path_ims, path_out)
-    #"""
+    """

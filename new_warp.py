@@ -104,7 +104,7 @@ def fit_lsq(t, x0):
     #r0 = res.x
     #print(res)
     #print(r0)
-    print(popt, pcov)
+    #print(popt, pcov)
     pstd = np.sqrt(np.var(resid1(popt)) * pcov[0,0])
     return popt, pstd
 
