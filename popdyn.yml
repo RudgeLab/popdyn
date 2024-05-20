@@ -4,6 +4,7 @@ channels:
 dependencies:
   - numpy
   - jupyter
+  - scikit-learn
   - scikit-image
   - matplotlib
   - pandas
@@ -11,4 +12,5 @@ dependencies:
   - opencv
   - python=3.8
   - tensorflow
-  - scikit-learn
+  - numba
+#  - infotracking

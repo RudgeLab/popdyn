@@ -6,8 +6,9 @@ from scipy.optimize import least_squares, fmin, minimize, leastsq
 from scipy.signal import savgol_filter
 import matplotlib.pyplot as plt
 import os
+from numba import jit
 
-
+@jit(nopython=True)
 def map_func(p, gx, gy, r, r0, mu0, sx, sy):
     R = r.max()
     gmag = np.sqrt(gx*gx + gy*gy)
@@ -18,7 +19,8 @@ def map_func(p, gx, gy, r, r0, mu0, sx, sy):
         vmag = mu0 * r0 / (R - r) * ((R - r - r0)*np.exp(-r/r0) + r0*np.exp(-R/r0))
         vmag[r==R] = 0
     else:
-        vmag = 0
+        #vmag = 0
+        vmag = np.zeros_like(r)
     #delr = laplace(r)
     #mu0 = dAdt / np.sum(np.exp(-r[r>0]/r0))
     #vmag = mu0 * r0 / (1 - r0 * delr) * np.exp(-r/r0)
@@ -37,7 +39,6 @@ def register(ref_mask, mask, im):
     regmask = warp(mask, tform.inverse, preserve_range=True)>0
     return regim,regmask
 
-
 def transform_image(im, edt, r0, mu0, sx, sy):
     mask = edt>0
     nmask = edt==0
@@ -45,6 +46,7 @@ def transform_image(im, edt, r0, mu0, sx, sy):
     redt = edt - nedt
 
     gx,gy = np.gradient(redt)
+
     args = {
         'gx':gx.ravel(), 
         'gy':gy.ravel(), 
