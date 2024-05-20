@@ -10,8 +10,25 @@ import sys
 import os
 
 # Parameters -----------------------------------
-folder = '/media/c1046372/Expansion/Conor MSc/Analysis_2/DHL708/14-06-23_pLPT20/Position 0'
+#folder = '/media/c1046372/Expansion/Conor MSc/Analysis_2/DHL708/14-06-23_pLPT20/Position 0'
+folder = '/home/campus.ncl.ac.uk/c1046372/Microscopy'
+
 path = folder+'/'+'velocity_data'
+
+#scope_name = 'Ti scope'
+scope_name = 'Ti scope'
+path_scope = os.path.join(folder, scope_name)
+exp_date = '2023_11_30'
+path = os.path.join(path_scope, exp_date)
+folder_masks = 'contour_masks'
+folder_results = 'results'
+folder_fluo = 'fluo'
+folder_graphs = 'graphs'
+
+
+
+
+
 startframe = 30
 step = 1
 nframes = 5
