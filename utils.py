@@ -1,5 +1,9 @@
 import os
+import json
+import math
+from datetime import datetime
 import numpy as np
+import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import cv2
@@ -18,6 +22,8 @@ from scipy.ndimage import distance_transform_edt, gaussian_filter
 from scipy.optimize import fmin, least_squares
 from scipy.signal import savgol_filter
 from scipy.io import savemat
+import infotracking
+from infotracking import Ensemble, infotheory
 
 def make_video(images_folder,  video_name):
     """

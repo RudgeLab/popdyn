@@ -1,6 +1,9 @@
 import os
 import json
+from datetime import datetime
+import math
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from skimage.io import imread, imsave
 
@@ -36,6 +39,62 @@ def get_params_for_date(microscope, date, metadata):
     except KeyError:
         print("Data not found for the given microscope and date.")
 
+def get_frames_vel(res):
+    i = res.index[0]
+    incub_time_s = datetime.strptime(res.loc[i,'t_im'], '%H:%M:%S') - datetime.strptime(res.loc[i,'t_incub'], '%H:%M:%S')
+    incub_time_n = incub_time_s.seconds / 60
+    t_m = res.loc[i, 't_m']
+    params = list(json.loads(res.loc[i,'gomp_params']).values())
+    
+    tmax = 4 * np.log(2) / params[2]
+    fini = math.ceil((t_m - incub_time_n)/10)
+    fend = 3 + math.ceil(tmax/10)
+    return fini, fend
+        #print(f"Frame ini: {fini}, Frame fin: {fend}")
+        #print(f"Frames: {fend - fini}")
+
+def compute_velocity(startframe, nframes, im, path_masks, path, folder_velocity, pos):
+    folder_pos = os.path.join(path, folder_velocity,f"pos{pos}")
+    if not os.path.exists(folder_pos):
+        os.makedirs(folder_pos)
+    
+    step = 1
+    nt = nframes-1
+
+    windowsize = 64
+    windowspacing = 32
+    window_px0 = 0
+    window_py0 = 0
+
+    maxvel = 19
+
+    #------------------------------------------------
+    #im = imread(folder+'/'+'10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif')
+    #im = im[:,:,:,ph_chn]
+    mask = imread(path_masks)
+    init_vel = np.zeros(mask.shape + (2,))
+    mask = mask / mask.max() # Make sure 0-1
+    im = im[startframe:startframe+(nframes * step):step,:,:]
+    mask = mask[startframe:startframe+(nframes * step):step,:,:]
+
+    print("Image dimensions ",im.shape)
+    eg = Ensemble.EnsembleGrid(im, mask, init_vel, mask_threshold=0.5)
+
+    eg.initialise_ensembles(windowsize,windowsize, \
+                            windowspacing,windowspacing, \
+                            window_px0,window_py0)
+    print("Grid dimensions ", eg.gx,eg.gy)
+
+    eg.compute_motion(nt,maxvel,maxvel,velstd=21,dt=1)
+
+
+    # Generate some output
+    print("Saving quiver plots...")
+    eg.save_quivers(folder_pos, 'quiver_image_%04d.png', 'quiver_plain_%04d.png', normed=False)
+    print("Saving data files...")
+    eg.save_data(folder_pos)
+
+
 ##################
 # global params
 ##################
@@ -51,15 +110,19 @@ with open('metadata.json') as f:
 #folder = '/home/guillermo/Microscopy'
 #folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
 folder = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
-#scope_name = 'Ti scope'
-scope_name = 'Tweez scope'
+scope_name = 'Ti scope'
+#scope_name = 'Tweez scope'
 path_scope = os.path.join(folder, scope_name)
 exp_date = '2023_11_15'
+df_date = '2023-11-15'
 path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
 folder_results = 'results'
 folder_fluo = 'fluo'
 folder_graphs = 'graphs'
+folder_velocity = 'velocity_data'
+
+df = pd.read_excel('Notebooks/out_gomp_log.xlsx')
 
 ### params for repressilator single reporter
 #"""
@@ -86,21 +149,22 @@ if not os.path.exists(os.path.join(path, folder_fluo)):
     os.makedirs(os.path.join(path, folder_fluo))
 if not os.path.exists(os.path.join(path, folder_graphs)):
     os.makedirs(os.path.join(path, folder_graphs))
+if not os.path.exists(os.path.join(path, folder_velocity)):
+    os.makedirs(os.path.join(path, folder_velocity))
 
 # call get_params_for_date and then make a loop
 colonies = get_params_for_date(scope_name, exp_date, metadata)
 
 # loop to perform the functions contour_mask, average_growth, compute_er to each
 # position (colony) selected from an experiment
-#for pos in colonies.keys():
-for pos in [1]: #[23,24,25,28,30,31,32,34]:
+for pos in colonies.keys():
+#for pos in [1]: #[23,24,25,28,30,31,32,34]:
     # TO DO: fname needs to be more modular
-    fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_Ti_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
+    fname = f'{exp_date}_10x_1.0x_pLPT20&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT119&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT119&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT107&41_Ti_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT107&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pAAA_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pAAA_Ti_Pos{pos}.ome.tif'
@@ -129,11 +193,23 @@ for pos in [1]: #[23,24,25,28,30,31,32,34]:
     radius = metadata[scope_name][exp_date][str(pos)]['radius']
     radj = metadata[scope_name][exp_date][str(pos)]['radj']
 
-    contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
+    #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
     
     ###############
     # average_growth
     #average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
+
+    ####################
+    # velocity profile
+    ####################
+    res = df[(df.Date==df_date) & 
+             (df.Machine==scope_name) & 
+             (df.Position==int(pos))].copy()
+
+    fini, fend = get_frames_vel(res)
+    nframes = fend - fini
+    print(fini, fend)
+    compute_velocity(fini, nframes, im_ph, path_masks, path, folder_velocity, pos)
 
     ###############
     # compute_er

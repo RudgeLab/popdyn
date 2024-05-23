@@ -22,12 +22,6 @@ exp_date = '2023_11_30'
 path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
 folder_results = 'results'
-folder_fluo = 'fluo'
-folder_graphs = 'graphs'
-
-
-
-
 
 startframe = 30
 step = 1
