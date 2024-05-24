@@ -109,7 +109,7 @@ with open('metadata.json') as f:
 
 #folder = '/home/guillermo/Microscopy'
 #folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
-folder = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
+folder = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files/'
 scope_name = 'Ti scope'
 #scope_name = 'Tweez scope'
 path_scope = os.path.join(folder, scope_name)
@@ -125,20 +125,20 @@ folder_velocity = 'velocity_data'
 df = pd.read_excel('Notebooks/out_gomp_log.xlsx')
 
 ### params for repressilator single reporter
-#"""
+"""
 yfp_chn = 0
 cfp_chn = 1
 ph_chn = 2
 fluo_chns = 2
-#"""
-### params for repressilator triple reporter and pAAA
 """
+### params for repressilator triple reporter and pAAA
+#"""
 rfp_chn = 0
 yfp_chn = 1
 cfp_chn = 2
 ph_chn = 3
 fluo_chns = 3
-"""
+#"""
 
 # create folders that will store analysis results
 if not os.path.exists(os.path.join(path, folder_masks)):
