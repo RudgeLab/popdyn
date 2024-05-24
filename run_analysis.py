@@ -113,8 +113,8 @@ folder = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
 scope_name = 'Ti scope'
 #scope_name = 'Tweez scope'
 path_scope = os.path.join(folder, scope_name)
-exp_date = '2023_11_15'
-df_date = '2023-11-15'
+exp_date = '2023_11_28'
+df_date = '2023-11-28'
 path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
 folder_results = 'results'
@@ -161,13 +161,13 @@ for pos in colonies.keys():
 #for pos in [1]: #[23,24,25,28,30,31,32,34]:
     # TO DO: fname needs to be more modular
     #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
-    fname = f'{exp_date}_10x_1.0x_pLPT20&41_Ti_Pos{pos}.ome.tif'
+    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT119&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT119&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT107&41_Ti_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pLPT107&41_TiTweez_Pos{pos}.ome.tif'
     #fname = f'{exp_date}_10x_1.0x_pAAA_TiTweez_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pAAA_Ti_Pos{pos}.ome.tif'
+    fname = f'{exp_date}_10x_1.0x_pAAA_Ti_Pos{pos}.ome.tif'
     fname_mask = 'mask_' + fname
 
     path_im = os.path.join(path, fname)
@@ -182,6 +182,7 @@ for pos in colonies.keys():
     im_all = imread(path_im)
     
     im_ph = im_all[:,:,:,ph_chn].astype(float)
+    im_yfp = im_all[:,:,:,yfp_chn].astype(float)
     im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
     
     ###############
@@ -202,13 +203,16 @@ for pos in colonies.keys():
     ####################
     # velocity profile
     ####################
-    res = df[(df.Date==df_date) & 
-             (df.Machine==scope_name) & 
-             (df.Position==int(pos))].copy()
+    #res = df[(df.Date==df_date) & 
+    #         (df.Machine==scope_name) & 
+    #         (df.Position==int(pos))].copy()
 
-    fini, fend = get_frames_vel(res)
-    nframes = fend - fini
-    print(fini, fend)
+    #fini, fend = get_frames_vel(res)
+    #nframes = fend - fini
+    #nframes = 30
+    fini = 10
+    nframes = 60
+    #print(fini, fend)
     compute_velocity(fini, nframes, im_ph, path_masks, path, folder_velocity, pos)
 
     ###############
