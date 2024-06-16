@@ -96,7 +96,7 @@ def plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns):
     wdlkymo_rho = np.zeros_like(dlkymo_rho)
 
     if fluo_chns == 3:
-        for c in range(fluo_chns):
+        for c in range(fluo_chns-1):
             wdlkymo_rho[:,:,c] = warp(dlkymo_rho[:,:,c], map_func, {'edt':edt, 'rs':rs})
         wdlkymo_rho[np.isnan(dlkymo_rho)] = np.nan
         
