@@ -95,11 +95,13 @@ def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_mas
         rr, cc = polygon(snake[:, 0], snake[:, 1], mnew.shape)
         mnew[rr,cc] = 1
 
+        """
         # remove pixels on the boundaries of the contour
         for _ in range(8):
             mnew = binary_erosion(mnew)
+        """
         mask_out[t,:,:] = mnew
-
+        
         # update center coordinates and radius of the contour based on the new mask
         cx,cy = snake.mean(axis=0)
         area = np.sum(mnew)

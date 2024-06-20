@@ -53,24 +53,17 @@ def get_frames_vel(res):
         #print(f"Frame ini: {fini}, Frame fin: {fend}")
         #print(f"Frames: {fend - fini}")
 
-def compute_velocity(startframe, nframes, im, path_masks, path, folder_velocity, pos):
+def compute_velocity(startframe, nframes, im, path_masks, path, folder_velocity, pos, windowsize, windowspacing):
     folder_pos = os.path.join(path, folder_velocity,f"pos{pos}")
     if not os.path.exists(folder_pos):
         os.makedirs(folder_pos)
     
     step = 1
     nt = nframes-1
-
-    windowsize = 64
-    windowspacing = 32
     window_px0 = 0
     window_py0 = 0
 
     maxvel = 19
-
-    #------------------------------------------------
-    #im = imread(folder+'/'+'10x_1.0x_pLPT20_DHL_1_MMStack_Pos0.ome.tif')
-    #im = im[:,:,:,ph_chn]
     mask = imread(path_masks)
     init_vel = np.zeros(mask.shape + (2,))
     mask = mask / mask.max() # Make sure 0-1
@@ -109,38 +102,27 @@ with open('metadata.json') as f:
 
 #folder = '/home/guillermo/Microscopy'
 #folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
-folder = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files/'
-scope_name = 'Ti scope'
-#scope_name = 'Tweez scope'
-path_scope = os.path.join(folder, scope_name)
-exp_date = '2023_11_28'
-df_date = '2023-11-28'
-path = os.path.join(path_scope, exp_date)
+path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
+#scope_name = 'Ti scope'
+scope_name = 'Tweez scope'
+#path_scope = os.path.join(folder, scope_name)
+exp_date = '2023_12_06'
+#df_date = '2023-11-17'
+#path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
 folder_results = 'results'
 folder_fluo = 'fluo'
 folder_graphs = 'graphs'
 folder_velocity = 'velocity_data'
+# for file name
+scopes = {'Tweez scope': 'TiTweez', 'Ti scope': 'Ti'}
+dnas = {'pLPT20&pLPT41': 'pLPT20&41', 'pLPT119&pLPT41': 'pLPT119&41', 'pAAA': 'pAAA', 'pLPT107&pLPT41': 'pLPT107&41'}
+vector = 'pLPT20&pLPT41'
 
-df = pd.read_excel('Notebooks/out_gomp_log.xlsx')
-
-### params for repressilator single reporter
-"""
-yfp_chn = 0
-cfp_chn = 1
-ph_chn = 2
-fluo_chns = 2
-"""
-### params for repressilator triple reporter and pAAA
-#"""
-rfp_chn = 0
-yfp_chn = 1
-cfp_chn = 2
-ph_chn = 3
-fluo_chns = 3
-#"""
+#df = pd.read_excel('Notebooks/out_gomp_log.xlsx')
 
 # create folders that will store analysis results
+"""
 if not os.path.exists(os.path.join(path, folder_masks)):
     os.makedirs(os.path.join(path, folder_masks))
 if not os.path.exists(os.path.join(path, folder_results)):
@@ -151,34 +133,55 @@ if not os.path.exists(os.path.join(path, folder_graphs)):
     os.makedirs(os.path.join(path, folder_graphs))
 if not os.path.exists(os.path.join(path, folder_velocity)):
     os.makedirs(os.path.join(path, folder_velocity))
-
+"""
 # call get_params_for_date and then make a loop
-colonies = get_params_for_date(scope_name, exp_date, metadata)
 
+# experiments metadata
+with open('metadata.json') as f:
+    metadata = json.load(f)
+
+# this is for bulk analysis
+"""
+exp_sum = pd.read_excel('../Notebooks/Exps_summary.xlsx')
+exp_sum['formatted_dates'] = exp_sum['Date'].dt.strftime('%Y_%m_%d')
+positions = pd.read_excel('../Notebooks/Positions.xlsx')
+
+for i in range(len(exp_sum)):
+    exp_date = exp_sum.loc[i,'formatted_dates']
+    vector = exp_sum.loc[i,'DNA']
+
+    scope_name = exp_sum.loc[i,'Machine']
+    poss = positions[(positions.Date == exp_sum.loc[i, 'Date']) & (positions.DNA == vector) & (positions.Machine == scope_name) & (positions.Quality == 'Very good')].Position.unique()
+
+    
+"""
+if vector == 'pLPT20&pLPT41' or vector == 'pLPT119&pLPT41':
+    yfp_chn = 0
+    cfp_chn = 1
+    ph_chn = 2
+    fluo_chns = 2
+else:
+    rfp_chn = 0
+    yfp_chn = 1
+    cfp_chn = 2
+    ph_chn = 3
+    fluo_chns = 3
 # loop to perform the functions contour_mask, average_growth, compute_er to each
 # position (colony) selected from an experiment
-for pos in colonies.keys():
-#for pos in [1]: #[23,24,25,28,30,31,32,34]:
-    # TO DO: fname needs to be more modular
-    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_TiTweez_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pLPT20&41_Ti_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pLPT119&41_Ti_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pLPT119&41_TiTweez_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pLPT107&41_Ti_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pLPT107&41_TiTweez_Pos{pos}.ome.tif'
-    #fname = f'{exp_date}_10x_1.0x_pAAA_TiTweez_Pos{pos}.ome.tif'
-    fname = f'{exp_date}_10x_1.0x_pAAA_Ti_Pos{pos}.ome.tif'
-    fname_mask = 'mask_' + fname
-
+#for pos in poss:
+for pos in [28]: #[23,24,25,28,30,31,32,34]:
+    print(f"Pos {pos}")
+    print(f"{exp_date}_{scopes[scope_name]}_{vector}")
+    fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
+    path_scope = os.path.join(path_ext, scope_name)
+    path = os.path.join(path_scope, exp_date)
     path_im = os.path.join(path, fname)
+    path_results = os.path.join(path, folder_results, f"pos{pos}")
+    path_graphs = os.path.join(path, folder_graphs)       
+    fname_mask = 'mask_' + fname
     path_masks = os.path.join(path, folder_masks, fname_mask)
-    
-    start_frame = 0
-    step = 1
+    colonies = get_params_for_date(scope_name, exp_date, metadata)
 
-    # TO DO: make this parametric
-    # for experiments with more than 216 frames
-    #im_all = imread(path_im)[:315,:,:,:]
     im_all = imread(path_im)
     
     im_ph = im_all[:,:,:,ph_chn].astype(float)
@@ -193,8 +196,10 @@ for pos in colonies.keys():
     # TO DO: 'radius' is the guest to start the segmentation, change this name
     radius = metadata[scope_name][exp_date][str(pos)]['radius']
     radj = metadata[scope_name][exp_date][str(pos)]['radj']
-
-    #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
+    
+    start_frame = 0
+    step = 1
+    contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
     
     ###############
     # average_growth
@@ -203,18 +208,18 @@ for pos in colonies.keys():
     ####################
     # velocity profile
     ####################
-    #res = df[(df.Date==df_date) & 
-    #         (df.Machine==scope_name) & 
-    #         (df.Position==int(pos))].copy()
-
-    #fini, fend = get_frames_vel(res)
-    #nframes = fend - fini
-    #nframes = 30
-    fini = 10
+    
+    #fini = metadata[scope_name][exp_date][str(pos)]['vini']
+    #nframes = metadata[scope_name][exp_date][str(pos)]['vfin']
+    #windowsize = metadata[scope_name][exp_date][str(pos)]['wsize']
+    #windowspacing = metadata[scope_name][exp_date][str(pos)]['wspacing']
+    fini = 0
     nframes = 60
+    windowsize = 64
+    windowspacing = 32
+    
     #print(fini, fend)
-    compute_velocity(fini, nframes, im_ph, path_masks, path, folder_velocity, pos)
-
+    #compute_velocity(fini, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
     ###############
     # compute_er
     #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)

@@ -10,7 +10,7 @@ import sys
 import os
 
 # Parameters -----------------------------------
-#folder = '/media/c1046372/Expansion/Conor MSc/Analysis_2/DHL708/14-06-23_pLPT20/Position 0'
+folder = '/media/c1046372/Expansion/Conor MSc/Analysis_2/DHL708/14-06-23_pLPT20/Position 0'
 #folder = '/home/campus.ncl.ac.uk/c1046372/Microscopy'
 folder = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
 path = folder+'/'+'velocity_data'
@@ -18,15 +18,15 @@ path = folder+'/'+'velocity_data'
 #scope_name = 'Ti scope'
 scope_name = 'Tweez scope'
 path_scope = os.path.join(folder, scope_name)
-exp_date = '2023_12_08'
+exp_date = '2023_11_15'
 path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
 folder_results = 'results'
 
-startframe = 290
+startframe = 0
 step = 1
-nframes = 20
-#nframes = 50
+nframes = 60
+
 nt = nframes-1
 
 #windowsize = 64

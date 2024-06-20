@@ -182,68 +182,66 @@ positions = pd.read_excel('../Notebooks/Positions.xlsx')
 for i in range(len(exp_sum)):
     exp_date = exp_sum.loc[i,'formatted_dates']
     vector = exp_sum.loc[i,'DNA']
-    if vector == 'pAAA':
-        continue
+
+    scope_name = exp_sum.loc[i,'Machine']
+    poss = positions[(positions.Date == exp_sum.loc[i, 'Date']) & (positions.DNA == vector) & (positions.Machine == scope_name) & (positions.Quality == 'Very good')].Position.unique()
+    if vector == 'pLPT20&pLPT41' or vector == 'pLPT119&pLPT41':
+        yfp_chn = 0
+        cfp_chn = 1
+        ph_chn = 2
+        fluo_chns = 2
     else:
-        scope_name = exp_sum.loc[i,'Machine']
-        poss = positions[(positions.Date == exp_sum.loc[i, 'Date']) & (positions.DNA == vector) & (positions.Machine == scope_name) & (positions.Quality == 'Very good')].Position.unique()
-        if vector == 'pLPT20&pLPT41' or vector == 'pLPT119&pLPT41':
-            yfp_chn = 0
-            cfp_chn = 1
-            ph_chn = 2
-            fluo_chns = 2
-        else:
-            rfp_chn = 0
-            yfp_chn = 1
-            cfp_chn = 2
-            ph_chn = 3
-            fluo_chns = 3
+        rfp_chn = 0
+        yfp_chn = 1
+        cfp_chn = 2
+        ph_chn = 3
+        fluo_chns = 3
 
-        for pos in poss:
-            print(f"{exp_date}_{scopes[scope_name]}_{vector}")
-            print(f"Pos {pos}")
-            fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
-            path_scope = os.path.join(path_ext, scope_name)
-            path = os.path.join(path_scope, exp_date)
-            path_im = os.path.join(path, fname)
-            path_results = os.path.join(path, folder_results, f"pos{pos}")
-            path_graphs = os.path.join(path, folder_graphs)
+    for pos in poss:
+        print(f"{exp_date}_{scopes[scope_name]}_{vector}")
+        print(f"Pos {pos}")
+        fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
+        path_scope = os.path.join(path_ext, scope_name)
+        path = os.path.join(path_scope, exp_date)
+        path_im = os.path.join(path, fname)
+        path_results = os.path.join(path, folder_results, f"pos{pos}")
+        path_graphs = os.path.join(path, folder_graphs)
 
-            im_all = imread(path_im)
-            nt,nx,ny,nc = im_all.shape
-            print(im_all.shape)
+        im_all = imread(path_im)
+        nt,nx,ny,nc = im_all.shape
+        print(im_all.shape)
 
-            # BG correction
-            bg = np.zeros((nc,))
-            for c in range(nc):
-                bg[c] = im_all[0,:100,:100,c].mean()
+        # BG correction
+        bg = np.zeros((nc,))
+        for c in range(nc):
+            bg[c] = im_all[0,:100,:100,c].mean()
 
-            edt = np.load(os.path.join(path_results,'edt.npy'))
-            edt = edt[:,:,:]
+        edt = np.load(os.path.join(path_results,'edt.npy'))
+        edt = edt[:,:,:]
 
-            pad = 32
-            nr = 64
-            rw = 16
-            rs = np.linspace(rw, edt.max(), nr)
-            
-            #print("Crop image")
-            #crop_im_all, crop_edt = crop_image(im_all, edt, nx, ny, pad)
-            #im_all = crop_im_all
-            #edt = crop_edt
-            print("Kymo")
-            kymo = get_kymo(im_all, edt, nr, rw)
-            print("dlkymo_rho")
-            #kymo = np.load(os.path.join(path_results, 'kymo.npy'))
-            dlkymo_rho = get_dlkymo(kymo, nr, fluo_chns)
-            print("wdlkymo_rho")
-            wdlkymo_rho = plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns)
-            
-            print("Saving files")
-            ## save
-            #np.save(os.path.join(path_results, 'crop_im_all.npy'), crop_im_all)
-            #np.save(os.path.join(path_results, 'crop_edt.npy'), crop_edt)
-            
-            np.save(os.path.join(path_results, 'kymo.npy'), kymo)
-            np.save(os.path.join(path_results, 'dlkymo_rho.npy'), dlkymo_rho)
-            np.save(os.path.join(path_results, 'wdlkymo_rho.npy'), wdlkymo_rho)
-            print("Files printed")
+        pad = 32
+        nr = 64
+        rw = 16
+        rs = np.linspace(rw, edt.max(), nr)
+        
+        #print("Crop image")
+        #crop_im_all, crop_edt = crop_image(im_all, edt, nx, ny, pad)
+        #im_all = crop_im_all
+        #edt = crop_edt
+        print("Kymo")
+        kymo = get_kymo(im_all, edt, nr, rw)
+        print("dlkymo_rho")
+        #kymo = np.load(os.path.join(path_results, 'kymo.npy'))
+        dlkymo_rho = get_dlkymo(kymo, nr, fluo_chns)
+        print("wdlkymo_rho")
+        wdlkymo_rho = plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns)
+        
+        print("Saving files")
+        ## save
+        #np.save(os.path.join(path_results, 'crop_im_all.npy'), crop_im_all)
+        #np.save(os.path.join(path_results, 'crop_edt.npy'), crop_edt)
+        
+        np.save(os.path.join(path_results, 'kymo.npy'), kymo)
+        np.save(os.path.join(path_results, 'dlkymo_rho.npy'), dlkymo_rho)
+        np.save(os.path.join(path_results, 'wdlkymo_rho.npy'), wdlkymo_rho)
+        print("Files printed")

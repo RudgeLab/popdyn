@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from skimage.io import imread, imsave
 from scipy.signal import savgol_filter
 from scipy.optimize import least_squares
@@ -18,21 +19,39 @@ import matplotlib.pyplot as plt
 # vfront = 6.585722451885091
 # vfront = 65.8267122272761 / 60 * 10
 
-start_frame = 11
-t0 = 10
+# start frame from which velocimetry started
+start_frame = 0
+
+# time to which start fitting the data
+t0 = 30
 # offset = 0
-# end_frame = 80
+
+# time to which stop fitting the data
+#end_frame = 40
 step = 1
 
-pos = 6
+pos = 0
+#path = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files'
+path = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files'
+scope_name = 'Ti scope'
+exp_date = '2023_11_17'
+velocity_folder = 'velocity_data'
+masks_folder = 'contour_masks'
+results_folder = 'results'
+graphs_folder = 'graphs'
+dnas = {'pLPT20&pLPT41': 'pLPT20&41', 'pLPT119&pLPT41': 'pLPT119&41', 'pAAA': 'pAAA', 'pLPT107&pLPT41': 'pLPT107&41'}
+scopes = {'Tweez scope': 'TiTweez', 'Ti scope': 'Ti'}
+vector = 'pLPT20&pLPT41'
+#vector = 'pAAA'
 
 # Normalize velocity by edge vel
-vmag = np.load(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/results/pos{pos}/vmag.npy')
-#vmag = vmag[idx, :, :]
+#os.path.join(path,scope_name,exp_date,results_folder,f'pos{pos}', 'vmag.npy')
+vmag = np.load(os.path.join(path,scope_name,exp_date,results_folder,f'pos{pos}', 'vmag.npy'))
+#vmag = vmag[:end_frame, :, :]
 nt, nx, ny = vmag.shape
 
-vfront = np.load(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/results/pos{pos}/vfront.npy')
-rmax = np.load(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/results/pos{pos}/radius.npy')
+vfront = np.load(os.path.join(path,scope_name,exp_date,results_folder,f'pos{pos}', 'vfront.npy'))
+rmax = np.load(os.path.join(path,scope_name,exp_date,results_folder,f'pos{pos}', 'radius.npy'))
 #vfront = vfront[:-1]
 #idx = np.where((vfront > 3) * (rmax[1:] > 128))[0]
 idx = np.arange(start_frame,nt+start_frame)
@@ -52,7 +71,7 @@ for frame in range(t0,nt):
     nvmag[frame, :, :] = svmag[frame, :, :] / vfront[frame * step]
 
 
-radpos = np.load(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/results/pos{pos}/radpos.npy')
+radpos = np.load(os.path.join(path,scope_name,exp_date,results_folder,f'pos{pos}', 'radpos.npy'))
 #radpos = radpos[idx, :, :]
 # nvmag[~np.isnan(radpos)] = np.nan
 # svmag[~np.isnan(radpos)] = np.nan
@@ -71,6 +90,7 @@ def residual_func(edt, nvmag, nt, nx, ny):
                 for iy in range(ny):
                     if not np.isnan(nvmag[frame, ix, iy]) and vfront[frame] > 1:
                         r = edt[frame, ix * 32:ix * 32 + 64, iy * 32:iy * 32 + 64]
+                        #r = edt[t, ix * 16:ix * 16 + 32, iy * 16:iy * 16 + 32]
                         R = rmax[t]
                         B = R / ((R - r0) + r0 * np.exp(-R / r0))    
                         model_vmag = B * (((R - r - r0) * np.exp(-r / r0) + r0 * np.exp(-R / r0)) / (R - r))
@@ -83,13 +103,13 @@ def residual_func(edt, nvmag, nt, nx, ny):
     return residuals
 
 
-edt = np.load(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/results/pos{pos}/edt.npy')
+edt = np.load(os.path.join(path,scope_name,exp_date,results_folder,f'pos{pos}', 'edt.npy'))
 edt = edt[idx, :, :]
 res = least_squares(residual_func(edt, svmag, nt, nx, ny), x0=(np.log(50),))
 r0 = np.exp(res.x[0])
 C = 0  # res.x[1]
 
-np.save(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/results/pos{pos}/r0.npy', r0)
+np.save(os.path.join(path,scope_name,exp_date,results_folder,f'pos{pos}', 'r0.npy'), r0)
 
 print(f'r0 = {r0}, C = {C}')
 
@@ -108,6 +128,7 @@ for t in times:
         for iy in range(ny):
             if not np.isnan(svmag[t, ix, iy]):
                 r = edt[t, ix * 32:ix * 32 + 64, iy * 32:iy * 32 + 64]
+                #r = edt[t, ix * 16:ix * 16 + 32, iy * 16:iy * 16 + 32]
                 x_data = np.append(x_data, np.nanmean(r))
                 y_data = np.append(y_data, svmag[t, ix, iy])
     plt.plot(x_data, y_data, '.', alpha=0.2)  # , color=colours[i])
@@ -132,7 +153,7 @@ for t in times:
     plt.xlabel('Radial position')
     plt.ylabel('$v/v_{front}$')
 plt.tight_layout()
-plt.savefig(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/graphs/pos{pos}/vfront_rad.png')
+plt.savefig(os.path.join(path,scope_name,exp_date,graphs_folder,f'pos{pos}', 'vfront_rad.png'))
 plt.show()
 
 y_model = np.zeros((0,))
@@ -142,6 +163,7 @@ for t in range(t0,nt):
         for iy in range(ny):
             if not np.isnan(svmag[t, ix, iy]):
                 r = edt[t, ix * 32:ix * 32 + 64, iy * 32:iy * 32 + 64]
+                #r = edt[t, ix * 16:ix * 16 + 32, iy * 16:iy * 16 + 32]
                 R = rmax[t]
                 B = R / ((R - r0) + r0 * np.exp(-R / r0))    
                 model_vmag = B * (((R - r - r0) * np.exp(-r / r0) + r0 * np.exp(-R / r0)) / (R - r))
@@ -156,7 +178,7 @@ plt.plot(y_model, y_data, '.', alpha=0.1)
 plt.plot([0, y_model.max()], [0, y_model.max()], 'k--')
 plt.xlabel('Model $v$')
 plt.ylabel('Velocimetry $v$')
-plt.savefig(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/graphs/pos{pos}/model_graph.png')
+plt.savefig(os.path.join(path,scope_name,exp_date,graphs_folder,f'pos{pos}', 'model_graph.png'))
 # plt.xscale('log')
 # plt.yscale('log')
 plt.show()
@@ -173,9 +195,9 @@ for t in range(t0,nt):
 
 # The edge growth rate = 2 * edge velocity / r0 
 plt.plot(mu0)
-plt.savefig(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/graphs/pos{pos}/mu0_profile.png')
+plt.savefig(os.path.join(path,scope_name,exp_date,graphs_folder,f'pos{pos}', 'mu0_profile.png'))
 plt.show()
-np.save(f'/media/guillermo/Expansion/Thesis GY/3. Analyzed files/Ti scope/2023_11_28/results/pos{pos}/mu0.npy', mu0)
+np.save(os.path.join(path,scope_name,exp_date,results_folder,f'pos{pos}', 'mu0.npy'), mu0)
 
 
 
