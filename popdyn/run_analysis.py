@@ -106,7 +106,7 @@ path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
 #scope_name = 'Ti scope'
 scope_name = 'Tweez scope'
 #path_scope = os.path.join(folder, scope_name)
-exp_date = '2023_12_06'
+exp_date = '2023_12_08'
 #df_date = '2023-11-17'
 #path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
@@ -169,7 +169,7 @@ else:
 # loop to perform the functions contour_mask, average_growth, compute_er to each
 # position (colony) selected from an experiment
 #for pos in poss:
-for pos in [28]: #[23,24,25,28,30,31,32,34]:
+for pos in [38]: #[23,24,25,28,30,31,32,34]:
     print(f"Pos {pos}")
     print(f"{exp_date}_{scopes[scope_name]}_{vector}")
     fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
