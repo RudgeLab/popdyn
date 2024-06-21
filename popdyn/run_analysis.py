@@ -104,9 +104,9 @@ with open('metadata.json') as f:
 #folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
 path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
 #scope_name = 'Ti scope'
-scope_name = 'Tweez scope'
+#scope_name = 'Tweez scope'
 #path_scope = os.path.join(folder, scope_name)
-exp_date = '2023_12_08'
+#exp_date = '2023_12_08'
 #df_date = '2023-11-17'
 #path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
@@ -117,23 +117,10 @@ folder_velocity = 'velocity_data'
 # for file name
 scopes = {'Tweez scope': 'TiTweez', 'Ti scope': 'Ti'}
 dnas = {'pLPT20&pLPT41': 'pLPT20&41', 'pLPT119&pLPT41': 'pLPT119&41', 'pAAA': 'pAAA', 'pLPT107&pLPT41': 'pLPT107&41'}
-vector = 'pLPT20&pLPT41'
+#vector = 'pLPT20&pLPT41'
 
 #df = pd.read_excel('Notebooks/out_gomp_log.xlsx')
 
-# create folders that will store analysis results
-"""
-if not os.path.exists(os.path.join(path, folder_masks)):
-    os.makedirs(os.path.join(path, folder_masks))
-if not os.path.exists(os.path.join(path, folder_results)):
-    os.makedirs(os.path.join(path, folder_results))
-if not os.path.exists(os.path.join(path, folder_fluo)):
-    os.makedirs(os.path.join(path, folder_fluo))
-if not os.path.exists(os.path.join(path, folder_graphs)):
-    os.makedirs(os.path.join(path, folder_graphs))
-if not os.path.exists(os.path.join(path, folder_velocity)):
-    os.makedirs(os.path.join(path, folder_velocity))
-"""
 # call get_params_for_date and then make a loop
 
 # experiments metadata
@@ -141,7 +128,6 @@ with open('metadata.json') as f:
     metadata = json.load(f)
 
 # this is for bulk analysis
-"""
 exp_sum = pd.read_excel('../Notebooks/Exps_summary.xlsx')
 exp_sum['formatted_dates'] = exp_sum['Date'].dt.strftime('%Y_%m_%d')
 positions = pd.read_excel('../Notebooks/Positions.xlsx')
@@ -153,89 +139,100 @@ for i in range(len(exp_sum)):
     scope_name = exp_sum.loc[i,'Machine']
     poss = positions[(positions.Date == exp_sum.loc[i, 'Date']) & (positions.DNA == vector) & (positions.Machine == scope_name) & (positions.Quality == 'Very good')].Position.unique()
 
-    
-"""
-if vector == 'pLPT20&pLPT41' or vector == 'pLPT119&pLPT41':
-    yfp_chn = 0
-    cfp_chn = 1
-    ph_chn = 2
-    fluo_chns = 2
-else:
-    rfp_chn = 0
-    yfp_chn = 1
-    cfp_chn = 2
-    ph_chn = 3
-    fluo_chns = 3
-# loop to perform the functions contour_mask, average_growth, compute_er to each
-# position (colony) selected from an experiment
-#for pos in poss:
-for pos in [38]: #[23,24,25,28,30,31,32,34]:
-    print(f"Pos {pos}")
-    print(f"{exp_date}_{scopes[scope_name]}_{vector}")
-    fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
-    path_scope = os.path.join(path_ext, scope_name)
-    path = os.path.join(path_scope, exp_date)
-    path_im = os.path.join(path, fname)
-    path_results = os.path.join(path, folder_results, f"pos{pos}")
-    path_graphs = os.path.join(path, folder_graphs)       
-    fname_mask = 'mask_' + fname
-    path_masks = os.path.join(path, folder_masks, fname_mask)
-    colonies = get_params_for_date(scope_name, exp_date, metadata)
+    if vector == 'pLPT20&pLPT41' or vector == 'pLPT119&pLPT41':
+        yfp_chn = 0
+        cfp_chn = 1
+        ph_chn = 2
+        fluo_chns = 2
+    else:
+        rfp_chn = 0
+        yfp_chn = 1
+        cfp_chn = 2
+        ph_chn = 3
+        fluo_chns = 3
+    # loop to perform the functions contour_mask, average_growth, compute_er to each
+    # position (colony) selected from an experiment
+    for pos in poss:
+    #for pos in [38]: #[23,24,25,28,30,31,32,34]:
+        print(f"Pos {pos}")
+        print(f"{exp_date}_{scopes[scope_name]}_{vector}")
+        fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
+        path_scope = os.path.join(path_ext, scope_name)
+        path = os.path.join(path_scope, exp_date)
+        path_im = os.path.join(path, fname)
+        path_results = os.path.join(path, folder_results, f"pos{pos}")
+        path_graphs = os.path.join(path, folder_graphs)       
+        fname_mask = 'mask_' + fname
+        path_masks = os.path.join(path, folder_masks, fname_mask)
+        colonies = get_params_for_date(scope_name, exp_date, metadata)
 
-    im_all = imread(path_im)
-    
-    im_ph = im_all[:,:,:,ph_chn].astype(float)
-    im_yfp = im_all[:,:,:,yfp_chn].astype(float)
-    im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
-    
-    ###############
-    # contour mask
-    # it's in the inverse order because x -> columns and y -> rows
-    cy = metadata[scope_name][exp_date][str(pos)]['cx']
-    cx = metadata[scope_name][exp_date][str(pos)]['cy']
-    # TO DO: 'radius' is the guest to start the segmentation, change this name
-    radius = metadata[scope_name][exp_date][str(pos)]['radius']
-    radj = metadata[scope_name][exp_date][str(pos)]['radj']
-    
-    start_frame = 0
-    step = 1
-    contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
-    
-    ###############
-    # average_growth
-    #average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
+        
+        # create folders that will store analysis results
+        if not os.path.exists(os.path.join(path, folder_masks)):
+            os.makedirs(os.path.join(path, folder_masks))
+        if not os.path.exists(os.path.join(path, folder_results)):
+            os.makedirs(os.path.join(path, folder_results))
+        if not os.path.exists(os.path.join(path, folder_fluo)):
+            os.makedirs(os.path.join(path, folder_fluo))
+        if not os.path.exists(os.path.join(path, folder_graphs)):
+            os.makedirs(os.path.join(path, folder_graphs))
+        if not os.path.exists(os.path.join(path, folder_velocity)):
+            os.makedirs(os.path.join(path, folder_velocity))
+        
+        im_all = imread(path_im)
+        im_ph = im_all[:,:,:,ph_chn].astype(float)
+        im_yfp = im_all[:,:,:,yfp_chn].astype(float)
+        im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
+        
+        ###############
+        # contour mask
+        # it's in the inverse order because x -> columns and y -> rows
+        cy = metadata[scope_name][exp_date][str(pos)]['cx']
+        cx = metadata[scope_name][exp_date][str(pos)]['cy']
+        # TO DO: 'radius' is the guest to start the segmentation, change this name
+        radius = metadata[scope_name][exp_date][str(pos)]['radius']
+        radj = metadata[scope_name][exp_date][str(pos)]['radj']
+        
+        start_frame = 0
+        step = 1
 
-    ####################
-    # velocity profile
-    ####################
-    
-    #fini = metadata[scope_name][exp_date][str(pos)]['vini']
-    #nframes = metadata[scope_name][exp_date][str(pos)]['vfin']
-    #windowsize = metadata[scope_name][exp_date][str(pos)]['wsize']
-    #windowspacing = metadata[scope_name][exp_date][str(pos)]['wspacing']
-    fini = 0
-    nframes = 60
-    windowsize = 64
-    windowspacing = 32
-    
-    #print(fini, fend)
-    #compute_velocity(fini, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
-    ###############
-    # compute_er
-    #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
+        #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
+        
+        ###############
+        # average_growth
+        average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
 
-    ###############
-    # plot expression rate
-    #plot_er(im_ph, pos, path, folder_fluo, er, edt_reg, sfluo, dsfluo, fluo_chns)
+        ####################
+        # velocity profile
+        ####################
+        
+        #fini = metadata[scope_name][exp_date][str(pos)]['vini']
+        #nframes = metadata[scope_name][exp_date][str(pos)]['vfin']
+        #windowsize = metadata[scope_name][exp_date][str(pos)]['wsize']
+        #windowspacing = metadata[scope_name][exp_date][str(pos)]['wspacing']
+        fini = 0
+        nframes = 70
+        windowsize = 64
+        windowspacing = 32
+        
+        #print(fini, fend)
+        #compute_velocity(fini, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
+        ###############
+        # compute_er
+        #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
 
-    ###############
-    """
-    # videos expression rate
-    vids = ["sfluo", "dsfluo", "er"]
-    for i in range(len(vids)):
-        path_ims = os.path.join(path, folder_fluo, f"pos{pos}", vids[i])
-        path_out = os.path.join(path, folder_results, f"pos{pos}_{vids[i]}.avi")
-        print(f"path_ims: {path_ims}")
-        print(f"path_out: {path_out}")
-        make_video(path_ims, path_out)
-    """
+        ###############
+        # plot expression rate
+        #plot_er(im_ph, pos, path, folder_fluo, er, edt_reg, sfluo, dsfluo, fluo_chns)
+
+        ###############
+        """
+        # videos expression rate
+        vids = ["sfluo", "dsfluo", "er"]
+        for i in range(len(vids)):
+            path_ims = os.path.join(path, folder_fluo, f"pos{pos}", vids[i])
+            path_out = os.path.join(path, folder_results, f"pos{pos}_{vids[i]}.avi")
+            print(f"path_ims: {path_ims}")
+            print(f"path_out: {path_out}")
+            make_video(path_ims, path_out)
+        """
