@@ -216,6 +216,11 @@ for i in range(len(exp_sum)):
         for c in range(nc):
             bg[c] = im_all[0,:100,:100,c].mean()
 
+        im_all_bg = np.zeros_like(im_all)
+        for c in range(nc-1): 
+            im_all_bg[:,:,:,c] = im_all[:,:,:,c] - bg[c]
+        im_all_bg[:,:,:,ph_chn] = im_all[:,:,:,ph_chn]
+
         edt = np.load(os.path.join(path_results,'edt.npy'))
         edt = edt[:,:,:]
 
@@ -224,12 +229,12 @@ for i in range(len(exp_sum)):
         rw = 16
         rs = np.linspace(rw, edt.max(), nr)
         
-        #print("Crop image")
+        print("Crop image")
         #crop_im_all, crop_edt = crop_image(im_all, edt, nx, ny, pad)
         #im_all = crop_im_all
         #edt = crop_edt
         print("Kymo")
-        kymo = get_kymo(im_all, edt, nr, rw)
+        kymo = get_kymo(im_all_bg[:,:,:,:ph_chn], edt, nr, rw)
         print("dlkymo_rho")
         #kymo = np.load(os.path.join(path_results, 'kymo.npy'))
         dlkymo_rho = get_dlkymo(kymo, nr, fluo_chns)

@@ -29,10 +29,10 @@ nframes = 60
 
 nt = nframes-1
 
-#windowsize = 64
-#windowspacing = 32
-windowsize = 32
-windowspacing = 16
+windowsize = 64
+windowspacing = 32
+#windowsize = 32
+#windowspacing = 16
 window_px0 = 0
 window_py0 = 0
 

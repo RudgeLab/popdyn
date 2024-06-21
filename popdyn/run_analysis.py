@@ -124,8 +124,8 @@ dnas = {'pLPT20&pLPT41': 'pLPT20&41', 'pLPT119&pLPT41': 'pLPT119&41', 'pAAA': 'p
 # call get_params_for_date and then make a loop
 
 # experiments metadata
-with open('metadata.json') as f:
-    metadata = json.load(f)
+#with open('metadata.json') as f:
+#    metadata = json.load(f)
 
 # this is for bulk analysis
 exp_sum = pd.read_excel('../Notebooks/Exps_summary.xlsx')
@@ -187,20 +187,19 @@ for i in range(len(exp_sum)):
         ###############
         # contour mask
         # it's in the inverse order because x -> columns and y -> rows
-        cy = metadata[scope_name][exp_date][str(pos)]['cx']
-        cx = metadata[scope_name][exp_date][str(pos)]['cy']
+        #cy = metadata[scope_name][exp_date][str(pos)]['cx']
+        #cx = metadata[scope_name][exp_date][str(pos)]['cy']
         # TO DO: 'radius' is the guest to start the segmentation, change this name
-        radius = metadata[scope_name][exp_date][str(pos)]['radius']
-        radj = metadata[scope_name][exp_date][str(pos)]['radj']
+        #radius = metadata[scope_name][exp_date][str(pos)]['radius']
+        #radj = metadata[scope_name][exp_date][str(pos)]['radj']
         
-        start_frame = 0
-        step = 1
+        
 
         #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
         
         ###############
         # average_growth
-        average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
+        #average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
 
         ####################
         # velocity profile
@@ -210,13 +209,14 @@ for i in range(len(exp_sum)):
         #nframes = metadata[scope_name][exp_date][str(pos)]['vfin']
         #windowsize = metadata[scope_name][exp_date][str(pos)]['wsize']
         #windowspacing = metadata[scope_name][exp_date][str(pos)]['wspacing']
-        fini = 0
+        startframe = 0
+        step = 1
         nframes = 70
         windowsize = 64
         windowspacing = 32
         
         #print(fini, fend)
-        #compute_velocity(fini, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
+        compute_velocity(startframe, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
         ###############
         # compute_er
         #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
