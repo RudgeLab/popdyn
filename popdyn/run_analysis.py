@@ -192,8 +192,6 @@ for i in range(len(exp_sum)):
         # TO DO: 'radius' is the guest to start the segmentation, change this name
         #radius = metadata[scope_name][exp_date][str(pos)]['radius']
         #radj = metadata[scope_name][exp_date][str(pos)]['radj']
-        
-        
 
         #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
         
@@ -204,11 +202,7 @@ for i in range(len(exp_sum)):
         ####################
         # velocity profile
         ####################
-        
-        #fini = metadata[scope_name][exp_date][str(pos)]['vini']
-        #nframes = metadata[scope_name][exp_date][str(pos)]['vfin']
-        #windowsize = metadata[scope_name][exp_date][str(pos)]['wsize']
-        #windowspacing = metadata[scope_name][exp_date][str(pos)]['wspacing']
+
         startframe = 0
         step = 1
         nframes = 70

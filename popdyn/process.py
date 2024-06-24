@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # Image frame to start from and step between frames
 start_frame = 0
 step = 1
-nframes = 60
+nframes = 70
 #pos = 0
 # Position and velocity arrays from velocimetry
 
