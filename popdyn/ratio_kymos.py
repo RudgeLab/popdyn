@@ -40,7 +40,7 @@ def crop_image(im_all, edt, nx, ny, pad):
 
     return crop_im_all, crop_edt
 
-def map_func(p, edt, rs):
+def map_edt(p, edt, rs):
     rstep = np.mean(np.diff(rs))
     npos = p.shape[0]
     for i in range(npos):
@@ -49,7 +49,7 @@ def map_func(p, edt, rs):
         p[i,0] = (edt[t,:,:].max() - rs[r]) / rstep
     return p
 
-def get_kymo(im_all, edt, nr, rw):
+def compute_kymo(im_all, edt, nr, rw):
     nt,nx,ny,nc = im_all.shape
     # dont construct the kymo from the edge, so it starts from rw to edt.max
     # the edge is not that reliable because of the mask, niose numbers at the edge
@@ -68,7 +68,7 @@ def get_kymo(im_all, edt, nr, rw):
                     #nkymo[t,ri,c] = np.nanmean(ntcnim[idx])
     return kymo
 
-def get_dlkymo(kymo, nr, fluo_chns):    
+def compute_dlkymo(kymo, nr, fluo_chns):    
     if fluo_chns == 3:
         kymo_rho = np.stack([kymo[:,:,0] / kymo[:,:,2], kymo[:,:,1] / kymo[:,:,2]], axis=2)
         cs = 2
@@ -97,7 +97,7 @@ def plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns):
 
     if fluo_chns == 3:
         for c in range(fluo_chns-1):
-            wdlkymo_rho[:,:,c] = warp(dlkymo_rho[:,:,c], map_func, {'edt':edt, 'rs':rs})
+            wdlkymo_rho[:,:,c] = warp(dlkymo_rho[:,:,c], map_edt, {'edt':edt, 'rs':rs})
         wdlkymo_rho[np.isnan(dlkymo_rho)] = np.nan
         
         plt.figure(figsize=(7,2))
@@ -127,7 +127,7 @@ def plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns):
         plt.savefig(path_save, dpi=300)
 
     else:
-        wdlkymo_rho[:,:] = warp(dlkymo_rho[:,:], map_func, {'edt':edt, 'rs':rs})
+        wdlkymo_rho[:,:] = warp(dlkymo_rho[:,:], map_edt, {'edt':edt, 'rs':rs})
         wdlkymo_rho[np.isnan(dlkymo_rho)] = np.nan
         
         plt.figure(figsize=(7,2))
@@ -234,10 +234,10 @@ for i in range(len(exp_sum)):
         #im_all = crop_im_all
         #edt = crop_edt
         print("Kymo")
-        kymo = get_kymo(im_all_bg[:,:,:,:ph_chn], edt, nr, rw)
+        kymo = compute_kymo(im_all_bg[:,:,:,:ph_chn], edt, nr, rw)
         print("dlkymo_rho")
         #kymo = np.load(os.path.join(path_results, 'kymo.npy'))
-        dlkymo_rho = get_dlkymo(kymo, nr, fluo_chns)
+        dlkymo_rho = compute_dlkymo(kymo, nr, fluo_chns)
         print("wdlkymo_rho")
         wdlkymo_rho = plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns)
         

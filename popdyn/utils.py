@@ -372,3 +372,242 @@ def plot_er(im_ph, pos, path, folder_fluo, er, edt, sfluo, dsfluo, fluo_chns):
         plt.tight_layout()
         plt.savefig(os.path.join(folder_pos, 'er', 'er_%04d.png'%t))
         plt.close()
+
+def compute_velocity(startframe, nframes, im, path_masks, path, folder_velocity, pos, windowsize, windowspacing):
+    folder_pos = os.path.join(path, folder_velocity,f"pos{pos}")
+    if not os.path.exists(folder_pos):
+        os.makedirs(folder_pos)
+    
+    step = 1
+    nt = nframes-1
+    window_px0 = 0
+    window_py0 = 0
+
+    maxvel = 19
+    mask = imread(path_masks)
+    init_vel = np.zeros(mask.shape + (2,))
+    mask = mask / mask.max() # Make sure 0-1
+    im = im[startframe:startframe+(nframes * step):step,:,:]
+    mask = mask[startframe:startframe+(nframes * step):step,:,:]
+
+    print("Image dimensions ",im.shape)
+    eg = Ensemble.EnsembleGrid(im, mask, init_vel, mask_threshold=0.5)
+
+    eg.initialise_ensembles(windowsize,windowsize, \
+                            windowspacing,windowspacing, \
+                            window_px0,window_py0)
+    print("Grid dimensions ", eg.gx,eg.gy)
+
+    eg.compute_motion(nt,maxvel,maxvel,velstd=21,dt=1)
+
+
+    # Generate some output
+    print("Saving quiver plots...")
+    eg.save_quivers(folder_pos, 'quiver_image_%04d.png', 'quiver_plain_%04d.png', normed=False)
+    print("Saving data files...")
+    eg.save_data(folder_pos)
+
+def process_velocity(path, fname, folder_velocity, folder_results, folder_masks, position, start_frame, step):
+    vel = np.load(os.path.join(path,folder_velocity,f'pos{position}','vel.np.npy'))
+    pos = np.load(os.path.join(path,folder_velocity,f'pos{position}','pos.np.npy'))
+
+    # Size of data
+    nx, ny, nt, _ = vel.shape
+    edt = np.load(os.path.join(path,folder_results,f'pos{position}','edt.npy'))
+    mask_all = imread(os.path.join(path,folder_masks,'mask_'+fname))
+    mask_all = mask_all > 0
+
+    _, edtnx, edtny = edt.shape
+    x, y = np.meshgrid(np.arange(edtnx), np.arange(edtny))
+
+    # Make arrays to store results
+    radpos = np.zeros((nt, nx, ny))
+    vmag = np.zeros((nt, nx, ny))
+    vrad = np.zeros((nt, nx, ny))
+    vtheta = np.zeros((nt, nx, ny))
+
+    # Process the data and save results
+    for frame in range(nt):
+        print(f'Processing frame {frame}')
+
+        mask = mask_all[start_frame + frame * step + 1, :, :]
+        cx = x[mask > 0].mean()
+        cy = y[mask > 0].mean()
+
+        vx = vel[:, :, frame, 0]
+        vy = vel[:, :, frame, 1]
+
+        # Subtract drift from velocities
+        vx -= np.nanmean(vx)
+        vy -= np.nanmean(vy)
+
+        # Get direction to colony edge as negative of gradient of distance
+        gradx, grady = np.gradient(edt[start_frame + frame * step + 1, :, :])
+        gradx[mask == 0] = np.nan
+        grady[mask == 0] = np.nan
+        px = pos[:, :, frame, 0].astype(int)
+        py = pos[:, :, frame, 1].astype(int)
+        pnorm = np.sqrt((px - cx) ** 2 + (py - cy) ** 2)
+
+        gx = np.zeros((nx, ny))
+        gy = np.zeros((nx, ny))
+        for ix in range(nx):
+            for iy in range(ny):
+                gx[ix, iy] = -np.nanmean(gradx[px[ix, iy]:px[ix, iy] + 64, py[ix, iy]:py[ix, iy] + 64])
+                gy[ix, iy] = -np.nanmean(grady[px[ix, iy]:px[ix, iy] + 64, py[ix, iy]:py[ix, iy] + 64])
+                # radpos[frame,ix,iy] = np.nanmean(edt[frame, px[ix,iy]-32:px[ix,iy]+32, py[ix,iy]-32:py[ix,iy]+32])
+        # Compute magnitude of velocities in radial direction
+        velnorm = np.sqrt(vx ** 2 + vy ** 2)
+        gnorm = np.sqrt(gx ** 2 + gy ** 2)
+        vmag[frame, :, :] = vx * gx + vy * gy
+        vrad[frame, :, :] = vmag[frame, :, :] / velnorm / gnorm
+        vperp = vx * gy - vy * gx
+        vtheta[frame, :, :] = vperp / velnorm / gnorm
+
+        # Radial position of each grid square
+        radpos[frame, :, :] = edt[frame, px + 16, py + 16]
+
+        # Save results
+
+        path_save = os.path.join(path,folder_results,f'pos{position}')
+        np.save(os.path.join(path_save,'radpos.npy'), radpos)
+        np.save(os.path.join(path_save,'vmag.npy'), vmag)
+        np.save(os.path.join(path_save,'vrad.npy'), vrad)
+        np.save(os.path.join(path_save,'vtheta.npy'), vtheta)
+
+def crop_image(im_all, edt, nx, ny, pad):
+    y,x = np.meshgrid(np.arange(nx), np.arange(ny))
+    edt0 = edt[-1,:,:]
+    minx = x[edt0>0].min()
+    maxx = x[edt0>0].max()
+    miny = y[edt0>0].min()
+    maxy = y[edt0>0].max()
+    w = maxx - minx
+    w = int(w//2) * 2
+    h = maxy - miny
+    h = int(h//2) * 2
+
+    #print(w,h)
+    #pad = 32
+
+    #crop_im_all = np.zeros((nt,w+2*pad-1,h+2*pad-1,nc))
+    #crop_edt = np.zeros((nt,w+2*pad-1,h+2*pad-1))
+    crop_im_all = np.zeros((nt,w+2*pad,h+2*pad,nc))
+    crop_edt = np.zeros((nt,w+2*pad,h+2*pad))
+    #print(crop_im_all.shape)
+    #print(crop_edt.shape)
+
+    for t in range(nt):
+        tedt = edt[t,:,:]
+        cx = int(x[tedt>0].mean())
+        cy = int(y[tedt>0].mean())
+        cim = im_all[t,cx - w//2 - pad:cx + w//2 + pad,cy - h//2 - pad:cy + h//2 + pad,:]
+        crop_im_all[t,:,:,:] = cim
+        crop_edt[t,:,:] = tedt[cx - w//2 - pad:cx + w//2 + pad,cy - h//2 - pad:cy + h//2 + pad]
+
+    return crop_im_all, crop_edt
+
+def map_edt(p, edt, rs):
+    rstep = np.mean(np.diff(rs))
+    npos = p.shape[0]
+    for i in range(npos):
+        r,t = p[i,:].astype(int)
+        # transformation from distance from the center
+        p[i,0] = (edt[t,:,:].max() - rs[r]) / rstep
+    return p
+
+def compute_kymo(im_all, edt, nr, rw):
+    nt,nx,ny,nc = im_all.shape
+    # dont construct the kymo from the edge, so it starts from rw to edt.max
+    # the edge is not that reliable because of the mask, niose numbers at the edge
+    rs = np.linspace(rw, edt.max(), nr)
+    kymo = np.zeros((nt,nr,nc)) + np.nan
+    #nkymo = np.zeros((nt,nr,3)) + np.nan
+    for t in range(nt):
+        for c in range(nc):
+            for ri in range(nr):
+                tedt = edt[t,:,:]
+                idx = np.abs(tedt - rs[ri]) < rw
+                if np.sum(idx)>0:
+                    ntcim = im_all[t,:,:,c]
+                    kymo[t,ri,c] = np.nanmean(ntcim[idx])
+                    #ntcnim = normed_im[t,:,:,c]
+                    #nkymo[t,ri,c] = np.nanmean(ntcnim[idx])
+    return kymo
+
+def compute_dlkymo(kymo, nr, fluo_chns):    
+    if fluo_chns == 3:
+        kymo_rho = np.stack([kymo[:,:,0] / kymo[:,:,2], kymo[:,:,1] / kymo[:,:,2]], axis=2)
+        cs = 2
+    else:
+        kymo_rho = kymo[:,:,0] / kymo[:,:,1]
+        cs = 1
+
+    lkymo_rho = np.log(kymo_rho)
+    dlkymo_rho = np.zeros_like(lkymo_rho) + np.nan
+
+    if fluo_chns == 3:
+        for r in range(nr):
+            for c in range(cs):
+                idx = ~np.isnan(lkymo_rho[:,r,c])
+                dlkymo_rho[idx,r,c] = savgol_filter(lkymo_rho[idx,r,c], 21, 3, deriv=1, axis=0)        
+    else:
+        for r in range(nr):
+            idx = ~np.isnan(lkymo_rho[:,r])
+            dlkymo_rho[idx,r] = savgol_filter(lkymo_rho[idx,r], 21, 3, deriv=1, axis=0)
+    
+    return dlkymo_rho
+
+def plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns):
+    path_save = os.path.join(path, 'graphs', f'wdlkymo_rho_pos{pos}.png')
+    wdlkymo_rho = np.zeros_like(dlkymo_rho)
+
+    if fluo_chns == 3:
+        for c in range(fluo_chns-1):
+            wdlkymo_rho[:,:,c] = warp(dlkymo_rho[:,:,c], map_edt, {'edt':edt, 'rs':rs})
+        wdlkymo_rho[np.isnan(dlkymo_rho)] = np.nan
+        
+        plt.figure(figsize=(7,2))
+        plt.subplot(1, 2, 1)
+        plt.imshow(np.hstack([wdlkymo_rho[50:,::-1,0],wdlkymo_rho[50:,:,0]]).transpose(), 
+                aspect='auto', 
+                extent=[50,215,-edt.max(),edt.max()],
+                vmin=-0.1, vmax=0.1,
+                cmap='jet')
+        plt.colorbar()
+        plt.xlabel('Time (frames)')
+        plt.ylabel('Radial distance (pixels)')
+        plt.title('$d\mathrm{log}\\rho_{rc}/dt$')
+        
+        plt.subplot(1, 2, 2)
+        plt.imshow(np.hstack([wdlkymo_rho[50:,::-1,1],wdlkymo_rho[50:,:,1]]).transpose(), 
+                aspect='auto', 
+                extent=[50,215,-edt.max(),edt.max()],
+                vmin=-0.1, vmax=0.1,
+                cmap='jet')
+        plt.colorbar()
+        plt.xlabel('Time (frames)')
+        plt.ylabel('Radial distance (pixels)')
+        plt.title('$d\mathrm{log}\\rho_{yc}/dt$')
+        
+        plt.tight_layout()
+        plt.savefig(path_save, dpi=300)
+
+    else:
+        wdlkymo_rho[:,:] = warp(dlkymo_rho[:,:], map_edt, {'edt':edt, 'rs':rs})
+        wdlkymo_rho[np.isnan(dlkymo_rho)] = np.nan
+        
+        plt.figure(figsize=(7,2))
+        #plt.subplot(1, 2, 1)
+        plt.imshow(np.hstack([wdlkymo_rho[50:,::-1],wdlkymo_rho[50:,:]]).transpose(), 
+                aspect='auto', 
+                extent=[50,215,-edt.max(),edt.max()],
+                vmin=-0.1, vmax=0.1,
+                cmap='jet')
+        plt.colorbar()
+        plt.xlabel('Time (frames)')
+        plt.ylabel('Radial distance (pixels)')
+        plt.title('$d\mathrm{log}\\rho_{yc}/dt$')
+        plt.tight_layout()
+        plt.savefig(path_save, dpi=300)
+    return wdlkymo_rho

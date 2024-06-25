@@ -53,40 +53,40 @@ def get_frames_vel(res):
         #print(f"Frame ini: {fini}, Frame fin: {fend}")
         #print(f"Frames: {fend - fini}")
 
-def compute_velocity(startframe, nframes, im, path_masks, path, folder_velocity, pos, windowsize, windowspacing):
-    folder_pos = os.path.join(path, folder_velocity,f"pos{pos}")
-    if not os.path.exists(folder_pos):
-        os.makedirs(folder_pos)
-    
-    step = 1
-    nt = nframes-1
-    window_px0 = 0
-    window_py0 = 0
+def compute_corr(im_all, edt_path, nr, rw, rfp_chn, yfp_chn, cfp_chn):    
+    nt,nx,ny,nc = im_all.shape
+    rs = np.linspace(rw, edt.max(), nr)
+    bg = np.zeros((nc,))
+    for c in range(nc):
+        bg[c] = im_all[0,:100,:100,c].mean()
 
-    maxvel = 19
-    mask = imread(path_masks)
-    init_vel = np.zeros(mask.shape + (2,))
-    mask = mask / mask.max() # Make sure 0-1
-    im = im[startframe:startframe+(nframes * step):step,:,:]
-    mask = mask[startframe:startframe+(nframes * step):step,:,:]
+    edt = np.load(os.path.join(edt_path))
+    edt = edt[:,:,:]
 
-    print("Image dimensions ",im.shape)
-    eg = Ensemble.EnsembleGrid(im, mask, init_vel, mask_threshold=0.5)
-
-    eg.initialise_ensembles(windowsize,windowsize, \
-                            windowspacing,windowspacing, \
-                            window_px0,window_py0)
-    print("Grid dimensions ", eg.gx,eg.gy)
-
-    eg.compute_motion(nt,maxvel,maxvel,velstd=21,dt=1)
-
-
-    # Generate some output
-    print("Saving quiver plots...")
-    eg.save_quivers(folder_pos, 'quiver_image_%04d.png', 'quiver_plain_%04d.png', normed=False)
-    print("Saving data files...")
-    eg.save_data(folder_pos)
-
+    cov = np.zeros((nt,nr,nc,nc))
+    corr = np.zeros((nt,nr,nc))
+    mean = np.zeros((nt,nr,nc))
+    for t in range(nt):
+        for ri in range(nr):
+            tedt = edt[t,:,:]
+            idx = np.abs(tedt - rs[ri]) < rw
+            if np.sum(idx)>0:
+                #plt.figure()
+                ntim0 = im_all[t,:,:,rfp_chn].astype(float) - bg[rfp_chn]
+                ntim1 = im_all[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                ntim2 = im_all[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]
+                x,y,z = ntim0[idx], ntim1[idx], ntim2[idx]
+                C = np.cov(np.stack([x, y, z]))
+                cov[t,ri,:,:] = C
+                corr[t,ri,0] = np.corrcoef(x, y)[0,1]
+                corr[t,ri,1] = np.corrcoef(x, z)[0,1]
+                corr[t,ri,2] = np.corrcoef(y, z)[0,1]
+                mean[t,ri,rfp_chn] = x.mean()
+                mean[t,ri,yfp_chn] = y.mean()
+                mean[t,ri,cfp_chn] = z.mean()
+    np.save(os.path.join(path_results, 'cov.npy'), cov)            
+    np.save(os.path.join(path_results, 'corr.npy'), corr)
+    np.save(os.path.join(path_results, 'mean.npy'), mean)
 
 ##################
 # global params
@@ -119,10 +119,6 @@ scopes = {'Tweez scope': 'TiTweez', 'Ti scope': 'Ti'}
 dnas = {'pLPT20&pLPT41': 'pLPT20&41', 'pLPT119&pLPT41': 'pLPT119&41', 'pAAA': 'pAAA', 'pLPT107&pLPT41': 'pLPT107&41'}
 #vector = 'pLPT20&pLPT41'
 
-#df = pd.read_excel('Notebooks/out_gomp_log.xlsx')
-
-# call get_params_for_date and then make a loop
-
 # experiments metadata
 #with open('metadata.json') as f:
 #    metadata = json.load(f)
@@ -135,9 +131,11 @@ positions = pd.read_excel('../Notebooks/Positions.xlsx')
 for i in range(len(exp_sum)):
     exp_date = exp_sum.loc[i,'formatted_dates']
     vector = exp_sum.loc[i,'DNA']
-
     scope_name = exp_sum.loc[i,'Machine']
-    poss = positions[(positions.Date == exp_sum.loc[i, 'Date']) & (positions.DNA == vector) & (positions.Machine == scope_name) & (positions.Quality == 'Very good')].Position.unique()
+    poss = positions[(positions.Date == exp_sum.loc[i, 'Date']) & 
+                     (positions.DNA == vector) & 
+                     (positions.Machine == scope_name) & 
+                     (positions.Quality == 'Very good')].Position.unique()
 
     if vector == 'pLPT20&pLPT41' or vector == 'pLPT119&pLPT41':
         yfp_chn = 0
@@ -203,15 +201,31 @@ for i in range(len(exp_sum)):
         # velocity profile
         ####################
 
-        startframe = 0
+        start_frame = 0
         step = 1
         nframes = 70
         windowsize = 64
         windowspacing = 32
         
         #print(fini, fend)
-        compute_velocity(startframe, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
+        #compute_velocity(start_frame, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
         ###############
+        
+        # process velocity
+        process_velocity(path, fname, folder_velocity, folder_results, folder_masks, pos, start_frame, step)
+        
+        edt_path = os.path.join(path_results,'edt.npy')
+        pad = 32
+        nr = 64
+        rw = 8
+        #rw = 16
+        #rs = np.linspace(rw, edt.max(), nr)
+
+        # compute_corr and mean
+        # image is just fluo channels
+        compute_corr(im_fluo, edt_path, nr, rw, rfp_chn, yfp_chn, cfp_chn) 
+
+
         # compute_er
         #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
 
