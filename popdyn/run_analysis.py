@@ -1,6 +1,7 @@
 import os
 import json
-from datetime import datetime
+import gc
+from datetime import datetime, timedelta
 import math
 import numpy as np
 import pandas as pd
@@ -51,42 +52,7 @@ def get_frames_vel(res):
     fend = 3 + math.ceil(tmax/10)
     return fini, fend
         #print(f"Frame ini: {fini}, Frame fin: {fend}")
-        #print(f"Frames: {fend - fini}")
-
-def compute_corr(im_all, edt_path, nr, rw, rfp_chn, yfp_chn, cfp_chn):    
-    nt,nx,ny,nc = im_all.shape
-    rs = np.linspace(rw, edt.max(), nr)
-    bg = np.zeros((nc,))
-    for c in range(nc):
-        bg[c] = im_all[0,:100,:100,c].mean()
-
-    edt = np.load(os.path.join(edt_path))
-    edt = edt[:,:,:]
-
-    cov = np.zeros((nt,nr,nc,nc))
-    corr = np.zeros((nt,nr,nc))
-    mean = np.zeros((nt,nr,nc))
-    for t in range(nt):
-        for ri in range(nr):
-            tedt = edt[t,:,:]
-            idx = np.abs(tedt - rs[ri]) < rw
-            if np.sum(idx)>0:
-                #plt.figure()
-                ntim0 = im_all[t,:,:,rfp_chn].astype(float) - bg[rfp_chn]
-                ntim1 = im_all[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
-                ntim2 = im_all[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]
-                x,y,z = ntim0[idx], ntim1[idx], ntim2[idx]
-                C = np.cov(np.stack([x, y, z]))
-                cov[t,ri,:,:] = C
-                corr[t,ri,0] = np.corrcoef(x, y)[0,1]
-                corr[t,ri,1] = np.corrcoef(x, z)[0,1]
-                corr[t,ri,2] = np.corrcoef(y, z)[0,1]
-                mean[t,ri,rfp_chn] = x.mean()
-                mean[t,ri,yfp_chn] = y.mean()
-                mean[t,ri,cfp_chn] = z.mean()
-    np.save(os.path.join(path_results, 'cov.npy'), cov)            
-    np.save(os.path.join(path_results, 'corr.npy'), corr)
-    np.save(os.path.join(path_results, 'mean.npy'), mean)
+        #print(f"Frames: {fend - fini}")        
 
 ##################
 # global params
@@ -132,12 +98,14 @@ for i in range(len(exp_sum)):
     exp_date = exp_sum.loc[i,'formatted_dates']
     vector = exp_sum.loc[i,'DNA']
     scope_name = exp_sum.loc[i,'Machine']
-    poss = positions[(positions.Date == exp_sum.loc[i, 'Date']) & 
-                     (positions.DNA == vector) & 
-                     (positions.Machine == scope_name) & 
-                     (positions.Quality == 'Very good')].Position.unique()
+    df_pos = positions[(positions.Date == exp_sum.loc[i, 'Date']) & 
+        (positions.DNA == vector) & 
+        (positions.Machine == scope_name) & 
+        (positions.Quality == 'Very good')]
+    poss = df_pos.Position.unique()
 
     if vector == 'pLPT20&pLPT41' or vector == 'pLPT119&pLPT41':
+        rfp_chn = ''
         yfp_chn = 0
         cfp_chn = 1
         ph_chn = 2
@@ -159,7 +127,7 @@ for i in range(len(exp_sum)):
         path = os.path.join(path_scope, exp_date)
         path_im = os.path.join(path, fname)
         path_results = os.path.join(path, folder_results, f"pos{pos}")
-        path_graphs = os.path.join(path, folder_graphs)       
+        path_graphs = os.path.join(path, folder_graphs, f"pos{pos}")       
         fname_mask = 'mask_' + fname
         path_masks = os.path.join(path, folder_masks, fname_mask)
         colonies = get_params_for_date(scope_name, exp_date, metadata)
@@ -178,12 +146,14 @@ for i in range(len(exp_sum)):
             os.makedirs(os.path.join(path, folder_velocity))
         
         im_all = imread(path_im)
-        im_ph = im_all[:,:,:,ph_chn].astype(float)
-        im_yfp = im_all[:,:,:,yfp_chn].astype(float)
+        #im_ph = im_all[:,:,:,ph_chn].astype(float)
+        #im_yfp = im_all[:,:,:,yfp_chn].astype(float)
         im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
         
         ###############
-        # contour mask
+        # Contour mask
+        ###############
+
         # it's in the inverse order because x -> columns and y -> rows
         #cy = metadata[scope_name][exp_date][str(pos)]['cx']
         #cx = metadata[scope_name][exp_date][str(pos)]['cy']
@@ -193,12 +163,14 @@ for i in range(len(exp_sum)):
 
         #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
         
-        ###############
+        #################
         # average_growth
+        #################
+
         #average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
 
         ####################
-        # velocity profile
+        # Velocity profile
         ####################
 
         start_frame = 0
@@ -207,24 +179,39 @@ for i in range(len(exp_sum)):
         windowsize = 64
         windowspacing = 32
         
-        #print(fini, fend)
         #compute_velocity(start_frame, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
         ###############
         
         # process velocity
-        process_velocity(path, fname, folder_velocity, folder_results, folder_masks, pos, start_frame, step)
+        #process_velocity(path, fname, folder_velocity, folder_results, folder_masks, pos, start_frame, step)
         
+        ####################
+        # Correlation
+        ####################
         edt_path = os.path.join(path_results,'edt.npy')
+        edt = np.load(os.path.join(edt_path))
+        edt = edt[:,:,:]
         pad = 32
         nr = 64
-        rw = 8
-        #rw = 16
-        #rs = np.linspace(rw, edt.max(), nr)
+        rw = 16
 
         # compute_corr and mean
         # image is just fluo channels
-        compute_corr(im_fluo, edt_path, nr, rw, rfp_chn, yfp_chn, cfp_chn) 
+        #corr_map, mean_map = compute_corr(im_fluo, edt, nr, rw, rfp_chn, yfp_chn, cfp_chn) 
+        corr_map, _ = compute_corr(im_fluo, edt, nr, rw, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results) 
 
+        # plot corr
+        t0 = 50
+        path_all = os.path.join(path, folder_graphs)
+        plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_graphs, path_all, t0)
+
+
+        ### Some cleaning
+        del edt
+        del corr_map
+        del im_all
+        del im_fluo
+        #del mean_map
 
         # compute_er
         #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
@@ -244,3 +231,4 @@ for i in range(len(exp_sum)):
             print(f"path_out: {path_out}")
             make_video(path_ims, path_out)
         """
+        gc.collect()

@@ -1,7 +1,7 @@
 import os
 import json
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -611,3 +611,157 @@ def plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns):
         plt.tight_layout()
         plt.savefig(path_save, dpi=300)
     return wdlkymo_rho
+
+def compute_corr(im_all, edt, nr, rw, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results):    
+    nt,nx,ny,nc = im_all.shape
+    rs = np.linspace(rw, edt.max(), nr)
+    bg = np.zeros((nc,))
+    for c in range(nc):
+        bg[c] = im_all[0,:100,:100,c].mean()
+
+    cov = np.zeros((nt,nr,nc,nc))
+    corr = np.zeros((nt,nr,nc))
+    mean = np.zeros((nt,nr,nc))
+    for t in range(nt):
+        for ri in range(nr):
+            tedt = edt[t,:,:]
+            idx = np.abs(tedt - rs[ri]) < rw
+            if np.sum(idx)>0:
+                #plt.figure()
+                if fluo_chns == 3:
+                    ntim0 = im_all[t,:,:,rfp_chn].astype(float) - bg[rfp_chn]
+                    ntim1 = im_all[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                    ntim2 = im_all[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]
+                    x,y,z = ntim0[idx], ntim1[idx], ntim2[idx]
+                    C = np.cov(np.stack([x, y, z]))
+                    cov[t,ri,:,:] = C
+                    corr[t,ri,0] = np.corrcoef(x, y)[0,1]
+                    corr[t,ri,1] = np.corrcoef(x, z)[0,1]
+                    corr[t,ri,2] = np.corrcoef(y, z)[0,1]
+                    mean[t,ri,rfp_chn] = x.mean()
+                    mean[t,ri,yfp_chn] = y.mean()
+                    mean[t,ri,cfp_chn] = z.mean()
+                elif fluo_chns == 2:                
+                    ntim0 = im_all[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                    ntim1 = im_all[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]               
+                    x,y = ntim0[idx], ntim1[idx]
+                    C = np.cov(np.stack([x, y]))
+                    cov[t,ri,:,:] = C
+                    corr[t,ri,0] = np.corrcoef(x, y)[0,1]
+                    corr[t,ri,1] = np.corrcoef(y, x)[0,1]
+                    mean[t,ri,yfp_chn] = x.mean()
+                    mean[t,ri,cfp_chn] = y.mean()
+    
+    corr_map = np.zeros_like(corr)
+    mean_map = np.zeros_like(mean)
+    for c in range(fluo_chns):
+        corr_map[:,:,c] = warp(corr[:,:,c], map_edt, {'edt':edt, 'rs':rs})
+        mean_map[:,:,c] = warp(mean[:,:,c], map_edt, {'edt':edt, 'rs':rs})
+    corr_map[np.isnan(corr)] = np.nan
+    mean_map[np.isnan(mean)] = np.nan
+
+    np.save(os.path.join(path_results, 'cov.npy'), cov)            
+    np.save(os.path.join(path_results, 'corr.npy'), corr)
+    np.save(os.path.join(path_results, 'mean.npy'), mean)
+    np.save(os.path.join(path_results, 'corr_map.npy'), corr_map)
+    np.save(os.path.join(path_results, 'mean_map.npy'), mean_map)
+
+    return corr_map, mean_map
+
+def plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_save, path_all, t0):
+    #radius = edt.max(axis=(1,2))
+    nt, nr, nc =  corr_map.shape
+    for i in df_pos.index.values:
+        #################################################################################################################
+        # Incubation time calculation, should be a function
+        time_im = df_pos.loc[i, 't_im']
+        time_incub = df_pos.loc[i, 't_incub']
+        
+        delta_im = timedelta(hours=time_im.hour, minutes=time_im.minute, seconds=time_im.second)
+        delta_incub = timedelta(hours=time_incub.hour, minutes=time_incub.minute, seconds=time_incub.second)
+        
+        # Calculate the difference
+        incub_time_s = delta_im - delta_incub
+        incub_time_n = incub_time_s.total_seconds() / 60
+        
+        time_points = np.arange(t0, df_pos.loc[i, 'exp length']) * 10 + incub_time_n
+        time_strings = [f"{int(tp // 60)}" for tp in time_points]  # Show only hours
+
+        # Select labels at intervals (e.g., every 50 points)
+        interval = 30
+        indices = np.arange(0, len(time_points), interval)
+        selected_time_strings = [time_strings[j] for j in indices]
+        #################################################################################################################
+        
+        # Plotting
+        if fluo_chns == 3:
+            plt.figure(figsize=(10, 9))
+
+            ax1 = plt.subplot(3, 1, 1)
+            plt.imshow(np.hstack([corr_map[t0:, ::-1, 0], corr_map[t0:, :, 0]]).transpose(), 
+                    extent=[0, nt, -edt.max(), edt.max()], 
+                    aspect='auto', 
+                    cmap='bwr', 
+                    vmin=-1, 
+                    vmax=1)
+            plt.title('Corr(RFP, YFP)')
+            plt.colorbar()
+
+            ax2 = plt.subplot(3, 1, 2)
+            plt.imshow(np.hstack([corr_map[t0:, ::-1, 1], corr_map[t0:, :, 1]]).transpose(), 
+                    extent=[0, nt, -edt.max(), edt.max()],  
+                    aspect='auto', 
+                    cmap='bwr', 
+                    vmin=-1, 
+                    vmax=1)
+            plt.title('Corr(RFP, CFP)')
+            plt.colorbar()
+            
+            ax3 = plt.subplot(3, 1, 3)
+            plt.imshow(np.hstack([corr_map[t0:, ::-1, 2], corr_map[t0:, :, 2]]).transpose(), 
+                    extent=[0, nt, -edt.max(), edt.max()],  
+                    aspect='auto', 
+                    cmap='bwr', 
+                    vmin=-1, 
+                    vmax=1)
+            plt.title('Corr(YFP, CFP)')
+            plt.colorbar()
+
+            # Set x-ticks and labels
+            for ax in [ax1, ax2, ax3]:
+                ax.set_xticks(indices)
+                ax.set_xticklabels(selected_time_strings)
+
+            # Add shared x and y labels
+            plt.gcf().text(0.5, 0.04, 'Time (h)', ha='center', va='center', fontsize=14)
+            plt.gcf().text(0.04, 0.5, r'Radial distance $(\mu m)$', ha='center', va='center', rotation='vertical', fontsize=14)
+            
+            plt.tight_layout(rect=[0.05, 0.05, 1, 1])  # Adjust layout to make room for the shared labels
+            #plt.savefig(os.path.join(path_save,f'pos{pos}',f'corr_pos{pos}.png'))
+            plt.savefig(os.path.join(path_all,f'corr_pos{pos}.png'))
+            #plt.show()
+
+        elif fluo_chns == 2:
+            plt.figure(figsize=(10, 3))
+            
+            ax1 = plt.subplot(1, 1, 1)
+            plt.imshow(np.hstack([corr_map[t0:, ::-1, 0], corr_map[t0:, :, 0]]).transpose(), 
+                    extent=[0, nt, -edt.max(), edt.max()], 
+                    aspect='auto', 
+                    cmap='bwr', 
+                    vmin=-1, 
+                    vmax=1)
+            plt.title('Corr(YFP, CFP)')
+            plt.colorbar()
+
+            ax1.set_xticks(indices)
+            ax1.set_xticklabels(selected_time_strings)
+
+            # Add shared x and y labels
+            plt.gcf().text(0.5, 0.04, 'Time (h)', ha='center', va='center', fontsize=14)
+            plt.gcf().text(0.04, 0.5, r'Radial distance $(\mu m)$', ha='center', va='center', rotation='vertical', fontsize=14)
+            
+            plt.tight_layout(rect=[0.05, 0.05, 1, 1])  # Adjust layout to make room for the shared labels
+            #plt.savefig(os.path.join(path_save,f'pos{pos}',f'corr_pos{pos}.png'))
+            plt.savefig(os.path.join(path_all,f'corr_pos{pos}.png'))
+            #plt.show()
