@@ -765,3 +765,53 @@ def plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_save, path_all,
             #plt.savefig(os.path.join(path_save,f'pos{pos}',f'corr_pos{pos}.png'))
             plt.savefig(os.path.join(path_all,f'corr_pos{pos}.png'))
             #plt.show()
+
+def get_rho_center(im_all, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results):
+    nt,nx,ny,nc = im_all.shape
+    print(im_all.shape)  
+    bg = np.zeros((nc,))
+    for c in range(nc):
+        bg[c] = im_all[0,:100,:100,c].mean()
+    
+    mean = np.zeros((nt,nc))
+    rho = np.zeros((nt,2))
+    lrho = np.zeros((nt,2))
+    dlrho = np.zeros_like(lrho) + np.nan
+    rw = 16
+    Rmax = edt.max()
+
+    for t in range(nt):    
+        tedt = edt[t,:,:]
+        idx = tedt > Rmax - rw        
+        if np.sum(idx)>0:
+            if fluo_chns == 3:
+                ntim0 = im_all[t,:,:,rfp_chn].astype(float) - bg[rfp_chn]
+                ntim1 = im_all[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                ntim2 = im_all[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]
+                x,y,z = ntim0[idx], ntim1[idx], ntim2[idx]
+                mean[t,rfp_chn] = x.mean()
+                mean[t,yfp_chn] = y.mean()
+                mean[t,cfp_chn] = z.mean()            
+            elif fluo_chns == 2:                
+                ntim0 = im_all[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                ntim1 = im_all[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]               
+                x,y = ntim0[idx], ntim1[idx]
+                mean[t,yfp_chn] = x.mean()
+                mean[t,cfp_chn] = y.mean()
+    if fluo_chns == 3:
+        rho[:,0] = mean[:,0] / mean[:,2]
+        rho[:,1] = mean[:,1] / mean[:,2]
+        lrho = np.log(rho)
+        for c in range(2):
+            idx = ~np.isnan(lrho[:,c])
+            dlrho[idx,c] = savgol_filter(lrho[idx,c], 21, 3, deriv=1, axis=0) 
+    elif fluo_chns == 2:
+        rho[:,0] = mean[:,0] / mean[:,1]
+        rho[:,1] = mean[:,1] / mean[:,0]
+        lrho = np.log(rho)
+    for c in range(2):
+        idx = ~np.isnan(lrho[:,c])
+        dlrho[idx,c] = savgol_filter(lrho[idx,c], 21, 3, deriv=1, axis=0)
+
+    np.save(os.path.join(path_results, 'dlrho_center.npy'), dlrho)
+    return dlrho

@@ -68,11 +68,13 @@ with open('metadata.json') as f:
 
 #folder = '/home/guillermo/Microscopy'
 #folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
-path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
+#path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
+path_ext = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
+exp_date = '2023_12_08'
+vector = 'pLPT20&pLPT41'
 #scope_name = 'Ti scope'
-#scope_name = 'Tweez scope'
+scope_name = 'Tweez scope'
 #path_scope = os.path.join(folder, scope_name)
-#exp_date = '2023_12_08'
 #df_date = '2023-11-17'
 #path = os.path.join(path_scope, exp_date)
 folder_masks = 'contour_masks'
@@ -83,7 +85,6 @@ folder_velocity = 'velocity_data'
 # for file name
 scopes = {'Tweez scope': 'TiTweez', 'Ti scope': 'Ti'}
 dnas = {'pLPT20&pLPT41': 'pLPT20&41', 'pLPT119&pLPT41': 'pLPT119&41', 'pAAA': 'pAAA', 'pLPT107&pLPT41': 'pLPT107&41'}
-#vector = 'pLPT20&pLPT41'
 
 # experiments metadata
 #with open('metadata.json') as f:
@@ -95,15 +96,15 @@ exp_sum['formatted_dates'] = exp_sum['Date'].dt.strftime('%Y_%m_%d')
 positions = pd.read_excel('../Notebooks/Positions.xlsx')
 
 for i in range(len(exp_sum)):
-    exp_date = exp_sum.loc[i,'formatted_dates']
-    vector = exp_sum.loc[i,'DNA']
-    scope_name = exp_sum.loc[i,'Machine']
+    #exp_date = exp_sum.loc[i,'formatted_dates']
+    #vector = exp_sum.loc[i,'DNA']
+    #scope_name = exp_sum.loc[i,'Machine']
     df_pos = positions[(positions.Date == exp_sum.loc[i, 'Date']) & 
         (positions.DNA == vector) & 
         (positions.Machine == scope_name) & 
         (positions.Quality == 'Very good')]
     poss = df_pos.Position.unique()
-
+    
     if vector == 'pLPT20&pLPT41' or vector == 'pLPT119&pLPT41':
         rfp_chn = ''
         yfp_chn = 0
@@ -118,8 +119,8 @@ for i in range(len(exp_sum)):
         fluo_chns = 3
     # loop to perform the functions contour_mask, average_growth, compute_er to each
     # position (colony) selected from an experiment
-    for pos in poss:
-    #for pos in [38]: #[23,24,25,28,30,31,32,34]:
+    #for pos in poss:
+    for pos in [3]: #[23,24,25,28,30,31,32,34]:
         print(f"Pos {pos}")
         print(f"{exp_date}_{scopes[scope_name]}_{vector}")
         fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
@@ -146,22 +147,24 @@ for i in range(len(exp_sum)):
             os.makedirs(os.path.join(path, folder_velocity))
         
         im_all = imread(path_im)
-        #im_ph = im_all[:,:,:,ph_chn].astype(float)
+        im_ph = im_all[:,:,:,ph_chn].astype(float)
         #im_yfp = im_all[:,:,:,yfp_chn].astype(float)
-        im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
-        
+        #im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
+        start_frame = 0
+        step = 1
+
         ###############
         # Contour mask
         ###############
 
         # it's in the inverse order because x -> columns and y -> rows
-        #cy = metadata[scope_name][exp_date][str(pos)]['cx']
-        #cx = metadata[scope_name][exp_date][str(pos)]['cy']
+        cy = metadata[scope_name][exp_date][str(pos)]['cx']
+        cx = metadata[scope_name][exp_date][str(pos)]['cy']
         # TO DO: 'radius' is the guest to start the segmentation, change this name
-        #radius = metadata[scope_name][exp_date][str(pos)]['radius']
-        #radj = metadata[scope_name][exp_date][str(pos)]['radj']
+        radius = metadata[scope_name][exp_date][str(pos)]['radius']
+        radj = metadata[scope_name][exp_date][str(pos)]['radj']
 
-        #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
+        contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
         
         #################
         # average_growth
@@ -172,9 +175,8 @@ for i in range(len(exp_sum)):
         ####################
         # Velocity profile
         ####################
-
-        start_frame = 0
-        step = 1
+        #start_frame = 0
+        #step = 1        
         nframes = 70
         windowsize = 64
         windowspacing = 32
@@ -188,9 +190,9 @@ for i in range(len(exp_sum)):
         ####################
         # Correlation
         ####################
-        edt_path = os.path.join(path_results,'edt.npy')
-        edt = np.load(os.path.join(edt_path))
-        edt = edt[:,:,:]
+        #edt_path = os.path.join(path_results,'edt.npy')
+        #edt = np.load(os.path.join(edt_path))
+        #edt = edt[:,:,:]
         pad = 32
         nr = 64
         rw = 16
@@ -198,19 +200,20 @@ for i in range(len(exp_sum)):
         # compute_corr and mean
         # image is just fluo channels
         #corr_map, mean_map = compute_corr(im_fluo, edt, nr, rw, rfp_chn, yfp_chn, cfp_chn) 
-        corr_map, _ = compute_corr(im_fluo, edt, nr, rw, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results) 
+        #corr_map, _ = compute_corr(im_fluo, edt, nr, rw, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results) 
 
         # plot corr
         t0 = 50
         path_all = os.path.join(path, folder_graphs)
-        plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_graphs, path_all, t0)
+        #plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_graphs, path_all, t0)
 
-
+        #_ = get_rho_center(im_fluo, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results)
         ### Some cleaning
-        del edt
-        del corr_map
+        #del edt
+        #del corr_map
         del im_all
-        del im_fluo
+        del im_ph
+        #del im_fluo
         #del mean_map
 
         # compute_er
@@ -221,14 +224,4 @@ for i in range(len(exp_sum)):
         #plot_er(im_ph, pos, path, folder_fluo, er, edt_reg, sfluo, dsfluo, fluo_chns)
 
         ###############
-        """
-        # videos expression rate
-        vids = ["sfluo", "dsfluo", "er"]
-        for i in range(len(vids)):
-            path_ims = os.path.join(path, folder_fluo, f"pos{pos}", vids[i])
-            path_out = os.path.join(path, folder_results, f"pos{pos}_{vids[i]}.avi")
-            print(f"path_ims: {path_ims}")
-            print(f"path_out: {path_out}")
-            make_video(path_ims, path_out)
-        """
         gc.collect()
