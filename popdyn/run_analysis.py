@@ -20,40 +20,6 @@ from skimage.draw import polygon
 
 from utils import *
 
-#########################
-# Functions
-#########################
-# this function might be needed in future when the metadata file gets bigger
-def get_params_for_date(microscope, date, metadata):
-    """Retrieves all parameters for a given microscope and date.
-    
-    Parameters:
-    - microscope (string): Name of the microscope that performed the experiment.
-    - date (string): Date of the experimental data to be analyzed.
-    - metadata (dict): Dictionary that contains experimental metadata
-
-    Returns:
-    - dictionary: Information of the colonies selected for analysis: Pos, cx, cy, radius.
-    """
-    try:
-        return metadata[microscope][date]
-    except KeyError:
-        print("Data not found for the given microscope and date.")
-
-def get_frames_vel(res):
-    i = res.index[0]
-    incub_time_s = datetime.strptime(res.loc[i,'t_im'], '%H:%M:%S') - datetime.strptime(res.loc[i,'t_incub'], '%H:%M:%S')
-    incub_time_n = incub_time_s.seconds / 60
-    t_m = res.loc[i, 't_m']
-    params = list(json.loads(res.loc[i,'gomp_params']).values())
-    
-    tmax = 4 * np.log(2) / params[2]
-    fini = math.ceil((t_m - incub_time_n)/10)
-    fend = 3 + math.ceil(tmax/10)
-    return fini, fend
-        #print(f"Frame ini: {fini}, Frame fin: {fend}")
-        #print(f"Frames: {fend - fini}")        
-
 ##################
 # global params
 ##################
@@ -66,8 +32,8 @@ with open('metadata.json') as f:
 # analysis params
 ##################
 
-#folder = '/home/guillermo/Microscopy'
-#folder = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
+#path_ext = '/home/guillermo/Microscopy'
+#path_ext = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
 #path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
 path_ext = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
 #exp_date = '2023_11_15'
@@ -119,8 +85,8 @@ for i in range(len(exp_sum)):
         fluo_chns = 3
     # loop to perform the functions contour_mask, average_growth, compute_er to each
     # position (colony) selected from an experiment
-    for pos in poss:
-    #for pos in [14]:
+    #for pos in poss:
+    for pos in [14]:
         print(f"Pos {pos}")
         print(f"{exp_date}_{scopes[scope_name]}_{vector}")
         fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
@@ -132,8 +98,6 @@ for i in range(len(exp_sum)):
         path_velocity =   os.path.join(path, folder_velocity, f"pos{pos}")     
         fname_mask = 'mask_' + fname
         path_masks = os.path.join(path, folder_masks, fname_mask)
-        colonies = get_params_for_date(scope_name, exp_date, metadata)
-
         
         # create folders that will store analysis results
         if not os.path.exists(os.path.join(path, folder_masks)):
@@ -147,8 +111,8 @@ for i in range(len(exp_sum)):
         if not os.path.exists(os.path.join(path, folder_velocity)):
             os.makedirs(os.path.join(path, folder_velocity))
         
-        #im_all = imread(path_im)
-        #im_ph = im_all[:,:,:,ph_chn].astype(float)
+        im_all = imread(path_im)
+        im_ph = im_all[:,:,:,ph_chn].astype(float)
         #im_yfp = im_all[:,:,:,yfp_chn].astype(float)
         #im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
         start_frame = 0
@@ -166,7 +130,7 @@ for i in range(len(exp_sum)):
         radj = metadata[scope_name][exp_date][str(pos)]['radj']
         #t0 = metadata[scope_name][exp_date][str(pos)]['vini']
         #tf = metadata[scope_name][exp_date][str(pos)]['vend']
-        #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
+        contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
         
         #################
         # average_growth
@@ -194,7 +158,7 @@ for i in range(len(exp_sum)):
         #process_velocity(path, fname, folder_velocity, folder_results, folder_masks, pos, start_frame, step)
         t0 = 0
         tf = 60
-        fit_velocity(edt, t0, tf, path_results, path_graphs)
+        #fit_velocity(edt, t0, tf, path_results, path_graphs)
         ####################
         # Correlation
         ####################
@@ -217,8 +181,8 @@ for i in range(len(exp_sum)):
         ### Some cleaning
         del edt
         #del corr_map
-        #del im_all
-        #del im_ph
+        del im_all
+        del im_ph
         #del im_fluo
         #del mean_map
 
