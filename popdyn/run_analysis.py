@@ -34,8 +34,8 @@ with open('metadata.json') as f:
 
 #path_ext = '/home/guillermo/Microscopy'
 #path_ext = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
-#path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
-path_ext = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
+path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
+#path_ext = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
 #exp_date = '2023_11_15'
 #vector = 'pLPT20&pLPT41'
 #scope_name = 'Ti scope'
@@ -86,7 +86,7 @@ for i in range(len(exp_sum)):
     # loop to perform the functions contour_mask, average_growth, compute_er to each
     # position (colony) selected from an experiment
     #for pos in poss:
-    for pos in [14]:
+    for pos in [3,5,8,9,10,14,15,16,20,22,25,26,27,28,33]:
         print(f"Pos {pos}")
         print(f"{exp_date}_{scopes[scope_name]}_{vector}")
         fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
@@ -112,9 +112,9 @@ for i in range(len(exp_sum)):
             os.makedirs(os.path.join(path, folder_velocity))
         
         im_all = imread(path_im)
-        im_ph = im_all[:,:,:,ph_chn].astype(float)
+        #im_ph = im_all[:,:,:,ph_chn].astype(float)
         #im_yfp = im_all[:,:,:,yfp_chn].astype(float)
-        #im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
+        im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
         start_frame = 0
         step = 1
 
@@ -130,7 +130,7 @@ for i in range(len(exp_sum)):
         radj = metadata[scope_name][exp_date][str(pos)]['radj']
         #t0 = metadata[scope_name][exp_date][str(pos)]['vini']
         #tf = metadata[scope_name][exp_date][str(pos)]['vend']
-        contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
+        #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
         
         #################
         # average_growth
@@ -149,7 +149,7 @@ for i in range(len(exp_sum)):
 
         edt_path = os.path.join(path_results,'edt.npy')
         edt = np.load(os.path.join(edt_path))
-        #edt = edt[:,:,:]
+        edt = edt[:,:,:]
         
         #compute_velocity(start_frame, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
         ###############
@@ -177,13 +177,13 @@ for i in range(len(exp_sum)):
         path_all = os.path.join(path, folder_graphs)
         #plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_graphs, path_all, t0)
 
-        #_ = get_rho_center(im_fluo, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results)
+        _ = get_rho_center(im_fluo, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results)
         ### Some cleaning
         del edt
         #del corr_map
         del im_all
-        del im_ph
-        #del im_fluo
+        #del im_ph
+        del im_fluo
         #del mean_map
 
         # compute_er
