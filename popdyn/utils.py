@@ -559,10 +559,10 @@ def compute_dlkymo(kymo, nr, fluo_chns):
     
     return dlkymo_rho
 
-def plot_fluo_ratio(dlkymo_rho, edt, path, rs, pos, fluo_chns):
+def plot_fluo_ratio(dlkymo_rho, edt, path, rs, pos, fluo_chns,t0):
     path_save = os.path.join(path, 'graphs', f'wdlkymo_rho_pos{pos}.png')
     wdlkymo_rho = np.zeros_like(dlkymo_rho)
-
+    nt, _, _ = dlkymo_rho.shape
     if fluo_chns == 3:
         for c in range(fluo_chns-1):
             wdlkymo_rho[:,:,c] = warp(dlkymo_rho[:,:,c], map_edt, {'edt':edt, 'rs':rs})
@@ -570,9 +570,9 @@ def plot_fluo_ratio(dlkymo_rho, edt, path, rs, pos, fluo_chns):
         
         plt.figure(figsize=(7,2))
         plt.subplot(1, 2, 1)
-        plt.imshow(np.hstack([wdlkymo_rho[50:,::-1,0],wdlkymo_rho[50:,:,0]]).transpose(), 
+        plt.imshow(np.hstack([wdlkymo_rho[t0:,::-1,0],wdlkymo_rho[t0:,:,0]]).transpose(), 
                 aspect='auto', 
-                extent=[50,215,-edt.max(),edt.max()],
+                extent=[t0,nt,-edt.max(),edt.max()],
                 vmin=-0.1, vmax=0.1,
                 cmap='jet')
         plt.colorbar()
@@ -581,9 +581,9 @@ def plot_fluo_ratio(dlkymo_rho, edt, path, rs, pos, fluo_chns):
         plt.title('$d\mathrm{log}\\rho_{rc}/dt$')
         
         plt.subplot(1, 2, 2)
-        plt.imshow(np.hstack([wdlkymo_rho[50:,::-1,1],wdlkymo_rho[50:,:,1]]).transpose(), 
+        plt.imshow(np.hstack([wdlkymo_rho[t0:,::-1,1],wdlkymo_rho[t0:,:,1]]).transpose(), 
                 aspect='auto', 
-                extent=[50,215,-edt.max(),edt.max()],
+                extent=[t0,nt,-edt.max(),edt.max()],
                 vmin=-0.1, vmax=0.1,
                 cmap='jet')
         plt.colorbar()
@@ -600,9 +600,9 @@ def plot_fluo_ratio(dlkymo_rho, edt, path, rs, pos, fluo_chns):
         
         plt.figure(figsize=(7,2))
         #plt.subplot(1, 2, 1)
-        plt.imshow(np.hstack([wdlkymo_rho[50:,::-1],wdlkymo_rho[50:,:]]).transpose(), 
+        plt.imshow(np.hstack([wdlkymo_rho[t0:,::-1],wdlkymo_rho[t0:,:]]).transpose(), 
                 aspect='auto', 
-                extent=[50,215,-edt.max(),edt.max()],
+                extent=[t0,nt,-edt.max(),edt.max()],
                 vmin=-0.1, vmax=0.1,
                 cmap='jet')
         plt.colorbar()
