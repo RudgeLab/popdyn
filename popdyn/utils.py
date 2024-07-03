@@ -516,8 +516,9 @@ def map_edt(p, edt, rs):
         p[i,0] = (edt[t,:,:].max() - rs[r]) / rstep
     return p
 
-def compute_kymo(im_all, edt, nr, rw):
-    nt,nx,ny,nc = im_all.shape
+def compute_kymo(im_fluo, edt, nr, rw):
+    # TO DO: performs only on fluo channels, so change nameto im_fluo
+    nt,nx,ny,nc = im_fluo.shape
     # dont construct the kymo from the edge, so it starts from rw to edt.max
     # the edge is not that reliable because of the mask, niose numbers at the edge
     rs = np.linspace(rw, edt.max(), nr)
@@ -529,7 +530,7 @@ def compute_kymo(im_all, edt, nr, rw):
                 tedt = edt[t,:,:]
                 idx = np.abs(tedt - rs[ri]) < rw
                 if np.sum(idx)>0:
-                    ntcim = im_all[t,:,:,c]
+                    ntcim = im_fluo[t,:,:,c]
                     kymo[t,ri,c] = np.nanmean(ntcim[idx])
                     #ntcnim = normed_im[t,:,:,c]
                     #nkymo[t,ri,c] = np.nanmean(ntcnim[idx])
@@ -558,7 +559,7 @@ def compute_dlkymo(kymo, nr, fluo_chns):
     
     return dlkymo_rho
 
-def plot_fluo_ratio(dlkymo_rho, path, rs, pos, fluo_chns):
+def plot_fluo_ratio(dlkymo_rho, edt, path, rs, pos, fluo_chns):
     path_save = os.path.join(path, 'graphs', f'wdlkymo_rho_pos{pos}.png')
     wdlkymo_rho = np.zeros_like(dlkymo_rho)
 
@@ -965,3 +966,137 @@ def fit_velocity(edt, t0, tf, path_results, path_graphs):
     plt.savefig(os.path.join(path_graphs, 'mu0_profile.png'))
     plt.close()
     np.save(os.path.join(path_results, 'mu0.npy'), mu0)
+
+def get_mean_colony_fluo(im_fluo, edt, fluo_chns, path_results):
+    nt, nx ,ny, nc = im_fluo.shape
+    bg = np.zeros(nc)
+    for c in range(nc):
+        bg[c] = im_fluo[0,:100,:100,c].mean(axis=(0,1))
+
+    chns = np.arange(nc)
+    mean = np.zeros((nt,nc))
+    rho = np.zeros((nt,nc))
+    lrho = np.zeros((nt,nc))
+    dlrho = np.zeros((nt,nc))
+    
+    for t in range(nt):
+        tedt = edt[t,:,:]
+        idx = tedt > 0
+        for ch in chns:
+            mean[t, ch] = np.nanmean(im_fluo[t, idx, ch] - bg[ch])
+    
+    if fluo_chns == 2:
+        rho[:,0] = mean[:, 0] / mean[:, 1]
+        rho[:,1] = mean[:, 1] / mean[:, 0]
+        
+    elif fluo_chns == 3:
+        rho[:,0] = mean[:, 0] / mean[:, 1]
+        rho[:,1] = mean[:, 0] / mean[:, 2]
+        rho[:,2] = mean[:, 1] / mean[:, 2]
+    
+    lrho = np.log(rho)
+    for c in range(2):
+        idx = ~np.isnan(lrho[:,c])
+        dlrho[idx,c] = savgol_filter(lrho[idx,c], 21, 3, deriv=1, axis=0)    
+    
+    np.save(os.path.join(path_results, 'mean_fluo_colony_ts.npy'), mean)
+    np.save(os.path.join(path_results, 'mean_fluo_colony.npy'), mean.mean(axis=0))
+    np.save(os.path.join(path_results, 'mean_rho_colony_ts.npy'), rho)
+    np.save(os.path.join(path_results, 'mean_rho_colony.npy'), rho.mean(axis=0))
+    np.save(os.path.join(path_results, 'mean_lrho_colony_ts.npy'), lrho)
+    np.save(os.path.join(path_results, 'mean_lrho_colony.npy'), lrho.mean(axis=0))
+    np.save(os.path.join(path_results, 'mean_dlrho_colony_ts.npy'), dlrho)
+    np.save(os.path.join(path_results, 'mean_dlrho_colony.npy'), dlrho.mean(axis=0))
+
+def get_fluo_edge_center(im_fluo, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results):
+    nt,nx,ny,nc = im_fluo.shape    
+    bg = np.zeros((nc,))
+    for c in range(nc):
+        bg[c] = im_fluo[0,:100,:100,c].mean()
+    
+    ## center
+    cmean = np.zeros((nt,nc))
+    crho = np.zeros((nt,nc))
+    clrho = np.zeros((nt,nc))
+    cdlrho = np.zeros_like(clrho) + np.nan
+    rw = 16
+    #Rmax = edt.max()
+
+    ## edge
+    emean = np.zeros((nt,nc))
+    erho = np.zeros((nt,nc))
+    elrho = np.zeros((nt,nc))
+    edlrho = np.zeros_like(elrho) + np.nan
+    
+    for t in range(nt):    
+        tedt = edt[t,:,:]
+        Rmax = tedt.max()
+        ## center
+        cidx = tedt > Rmax - rw        
+        if np.sum(cidx)>0:
+            if fluo_chns == 3:
+                cntim0 = im_fluo[t,:,:,rfp_chn].astype(float) - bg[rfp_chn]
+                cntim1 = im_fluo[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                cntim2 = im_fluo[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]
+                x,y,z = cntim0[cidx], cntim1[cidx], cntim2[cidx]
+                cmean[t,rfp_chn] = x.mean()
+                cmean[t,yfp_chn] = y.mean()
+                cmean[t,cfp_chn] = z.mean()            
+            elif fluo_chns == 2:                
+                cntim0 = im_fluo[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                cntim1 = im_fluo[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]               
+                x,y = cntim0[cidx], cntim1[cidx]
+                cmean[t,yfp_chn] = x.mean()
+                cmean[t,cfp_chn] = y.mean()
+        # edge
+        eidx = (tedt < 2*rw) & (tedt > rw)
+        if np.sum(eidx)>0:
+            if fluo_chns == 3:
+                entim0 = im_fluo[t,:,:,rfp_chn].astype(float) - bg[rfp_chn]
+                entim1 = im_fluo[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                entim2 = im_fluo[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]
+                x,y,z = entim0[eidx], entim1[eidx], entim2[eidx]
+                emean[t,rfp_chn] = x.mean()
+                emean[t,yfp_chn] = y.mean()
+                emean[t,cfp_chn] = z.mean()            
+            elif fluo_chns == 2:                
+                entim0 = im_fluo[t,:,:,yfp_chn].astype(float) - bg[yfp_chn]
+                entim1 = im_fluo[t,:,:,cfp_chn].astype(float) - bg[cfp_chn]               
+                x,y = entim0[eidx], entim1[eidx]
+                emean[t,yfp_chn] = x.mean()
+                emean[t,cfp_chn] = y.mean()
+    # center
+    if fluo_chns == 3:
+        crho[:,0] = cmean[:,0] / cmean[:,1] # ry
+        crho[:,1] = cmean[:,0] / cmean[:,2] # rc
+        crho[:,2] = cmean[:,1] / cmean[:,2] # yc
+        clrho = np.log(crho)
+     
+    elif fluo_chns == 2:
+        crho[:,0] = cmean[:,0] / cmean[:,1] # yc
+        crho[:,1] = cmean[:,1] / cmean[:,0] # cy
+        clrho = np.log(crho)
+    for c in range(2):
+        idx = ~np.isnan(clrho[:,c])
+        cdlrho[idx,c] = savgol_filter(clrho[idx,c], 21, 3, deriv=1, axis=0)
+    # edge
+    if fluo_chns == 3:
+        erho[:,0] = emean[:,0] / emean[:,1] # ry
+        erho[:,1] = emean[:,0] / emean[:,2] # rc
+        erho[:,2] = emean[:,1] / emean[:,2] # yc
+        elrho = np.log(erho)
+    elif fluo_chns == 2:
+        erho[:,0] = emean[:,0] / emean[:,1] # yc
+        erho[:,1] = emean[:,1] / emean[:,0] # cy
+        elrho = np.log(erho)
+    for c in range(nc):
+        idx = ~np.isnan(elrho[:,c])
+        edlrho[idx,c] = savgol_filter(elrho[idx,c], 21, 3, deriv=1, axis=0)
+    np.save(os.path.join(path_results, 'cmean.npy'), cmean)
+    np.save(os.path.join(path_results, 'crho.npy'), crho)
+    np.save(os.path.join(path_results, 'clrho.npy'), clrho)
+    np.save(os.path.join(path_results, 'cdlrho.npy'), cdlrho)
+    np.save(os.path.join(path_results, 'emean.npy'), emean)
+    np.save(os.path.join(path_results, 'erho.npy'), erho)              
+    np.save(os.path.join(path_results, 'elrho.npy'), elrho)
+    np.save(os.path.join(path_results, 'edlrho.npy'), edlrho)
