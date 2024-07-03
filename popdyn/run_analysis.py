@@ -34,8 +34,8 @@ with open('metadata.json') as f:
 
 #path_ext = '/home/guillermo/Microscopy'
 #path_ext = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
-path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
-#path_ext = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
+#path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
+path_ext = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
 #exp_date = '2023_11_15'
 #vector = 'pLPT20&pLPT41'
 #scope_name = 'Ti scope'
@@ -86,7 +86,7 @@ for i in range(len(exp_sum)):
     # loop to perform the functions contour_mask, average_growth, compute_er to each
     # position (colony) selected from an experiment
     #for pos in poss:
-    for pos in [3,5,8,9,10,14,15,16,20,22,25,26,27,28,33]:
+    for pos in [14,15,16]:
         print(f"Pos {pos}")
         print(f"{exp_date}_{scopes[scope_name]}_{vector}")
         fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
@@ -115,6 +115,9 @@ for i in range(len(exp_sum)):
         #im_ph = im_all[:,:,:,ph_chn].astype(float)
         #im_yfp = im_all[:,:,:,yfp_chn].astype(float)
         im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
+        edt_path = os.path.join(path_results,'edt.npy')
+        edt = np.load(os.path.join(edt_path))
+        #edt = edt[:,:,:]
         start_frame = 0
         step = 1
 
@@ -135,7 +138,6 @@ for i in range(len(exp_sum)):
         #################
         # average_growth
         #################
-
         #average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
 
         ####################
@@ -146,10 +148,6 @@ for i in range(len(exp_sum)):
         nframes = 70
         windowsize = 64
         windowspacing = 32
-
-        edt_path = os.path.join(path_results,'edt.npy')
-        edt = np.load(os.path.join(edt_path))
-        edt = edt[:,:,:]
         
         #compute_velocity(start_frame, nframes, im_ph, path_masks, path, folder_velocity, pos, windowsize, windowspacing)
         ###############
@@ -159,6 +157,18 @@ for i in range(len(exp_sum)):
         t0 = 0
         tf = 60
         #fit_velocity(edt, t0, tf, path_results, path_graphs)
+        
+        ################
+        # Kymo
+        ################
+        nr = 64
+        rw = 16
+        rs = np.linspace(rw, edt.max(), nr)
+
+        kymo = compute_kymo(im_fluo, edt, nr, rw)
+        dlkymo = compute_dlkymo(kymo, nr, fluo_chns)
+        plot_fluo_ratio(dlkymo, edt, path, rs, pos, fluo_chns)
+          
         ####################
         # Correlation
         ####################
@@ -166,7 +176,6 @@ for i in range(len(exp_sum)):
         pad = 32
         nr = 64
         rw = 16
-
         # compute_corr and mean
         # image is just fluo channels
         #corr_map, mean_map = compute_corr(im_fluo, edt, nr, rw, rfp_chn, yfp_chn, cfp_chn) 
@@ -174,10 +183,14 @@ for i in range(len(exp_sum)):
 
         # plot corr
         #t0 = 50
-        path_all = os.path.join(path, folder_graphs)
+        #path_all = os.path.join(path, folder_graphs)
         #plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_graphs, path_all, t0)
 
-        _ = get_rho_center(im_fluo, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results)
+        # add return later
+        # this function gets mean, rho, lrho and dlrho in time and for the whole TL in a single position
+        #get_mean_colony_fluo(im_fluo, edt, fluo_chns, path_results)
+        #get_fluo_edge_center(im_fluo, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results)
+        #_ = get_rho_center(im_fluo, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results)
         ### Some cleaning
         del edt
         #del corr_map
