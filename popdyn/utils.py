@@ -516,21 +516,26 @@ def map_edt(p, edt, rs):
         p[i,0] = (edt[t,:,:].max() - rs[r]) / rstep
     return p
 
+# This function should not compute background correction, it should be given the image corrected
 def compute_kymo(im_fluo, edt, nr, rw):
-    # TO DO: performs only on fluo channels, so change nameto im_fluo
     nt,nx,ny,nc = im_fluo.shape
     # dont construct the kymo from the edge, so it starts from rw to edt.max
     # the edge is not that reliable because of the mask, niose numbers at the edge
     rs = np.linspace(rw, edt.max(), nr)
     kymo = np.zeros((nt,nr,nc)) + np.nan
     #nkymo = np.zeros((nt,nr,3)) + np.nan
+
+    bg = np.zeros((nc,))
+    for c in range(nc):
+        bg[c] = im_fluo[0,:100,:100,c].mean()
+
     for t in range(nt):
         for c in range(nc):
             for ri in range(nr):
                 tedt = edt[t,:,:]
                 idx = np.abs(tedt - rs[ri]) < rw
                 if np.sum(idx)>0:
-                    ntcim = im_fluo[t,:,:,c]
+                    ntcim = im_fluo[t,:,:,c].astype(float) - bg[c]
                     kymo[t,ri,c] = np.nanmean(ntcim[idx])
                     #ntcnim = normed_im[t,:,:,c]
                     #nkymo[t,ri,c] = np.nanmean(ntcnim[idx])
@@ -538,25 +543,20 @@ def compute_kymo(im_fluo, edt, nr, rw):
 
 def compute_dlkymo(kymo, nr, fluo_chns):    
     if fluo_chns == 3:
-        kymo_rho = np.stack([kymo[:,:,0] / kymo[:,:,2], kymo[:,:,1] / kymo[:,:,2]], axis=2)
-        cs = 2
+        kymo_rho = np.stack([kymo[:,:,0] / kymo[:,:,1], kymo[:,:,0] / kymo[:,:,2], kymo[:,:,1] / kymo[:,:,2]], axis=2)
+        nc = 3
     else:
-        kymo_rho = kymo[:,:,0] / kymo[:,:,1]
-        cs = 1
+        kymo_rho = np.stack([kymo[:,:,0] / kymo[:,:,1], kymo[:,:,1] / kymo[:,:,0]], axis=2)
+        nc = 2
 
     lkymo_rho = np.log(kymo_rho)
     dlkymo_rho = np.zeros_like(lkymo_rho) + np.nan
-
-    if fluo_chns == 3:
-        for r in range(nr):
-            for c in range(cs):
-                idx = ~np.isnan(lkymo_rho[:,r,c])
-                dlkymo_rho[idx,r,c] = savgol_filter(lkymo_rho[idx,r,c], 21, 3, deriv=1, axis=0)        
-    else:
-        for r in range(nr):
-            idx = ~np.isnan(lkymo_rho[:,r])
-            dlkymo_rho[idx,r] = savgol_filter(lkymo_rho[idx,r], 21, 3, deriv=1, axis=0)
     
+    for r in range(nr):
+        for c in range(nc):
+            idx = ~np.isnan(lkymo_rho[:,r,c])
+            dlkymo_rho[idx,r,c] = savgol_filter(lkymo_rho[idx,r,c], 21, 3, deriv=1, axis=0)        
+
     return dlkymo_rho
 
 def plot_fluo_ratio(dlkymo_rho, edt, path, rs, pos, fluo_chns,t0):
@@ -613,6 +613,7 @@ def plot_fluo_ratio(dlkymo_rho, edt, path, rs, pos, fluo_chns,t0):
         plt.savefig(path_save, dpi=300)
     return wdlkymo_rho
 
+# This function should not compute background correction, it should be given the image corrected
 def compute_corr(im_all, edt, nr, rw, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_results):    
     nt,nx,ny,nc = im_all.shape
     rs = np.linspace(rw, edt.max(), nr)
@@ -700,7 +701,7 @@ def plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_save, path_all,
 
             ax1 = plt.subplot(3, 1, 1)
             plt.imshow(np.hstack([corr_map[t0:, ::-1, 0], corr_map[t0:, :, 0]]).transpose(), 
-                    extent=[0, nt, -edt.max(), edt.max()], 
+                    extent=[t0, nt, -edt.max(), edt.max()], 
                     aspect='auto', 
                     cmap='bwr', 
                     vmin=-1, 
@@ -710,7 +711,7 @@ def plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_save, path_all,
 
             ax2 = plt.subplot(3, 1, 2)
             plt.imshow(np.hstack([corr_map[t0:, ::-1, 1], corr_map[t0:, :, 1]]).transpose(), 
-                    extent=[0, nt, -edt.max(), edt.max()],  
+                    extent=[t0, nt, -edt.max(), edt.max()],  
                     aspect='auto', 
                     cmap='bwr', 
                     vmin=-1, 
@@ -720,7 +721,7 @@ def plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_save, path_all,
             
             ax3 = plt.subplot(3, 1, 3)
             plt.imshow(np.hstack([corr_map[t0:, ::-1, 2], corr_map[t0:, :, 2]]).transpose(), 
-                    extent=[0, nt, -edt.max(), edt.max()],  
+                    extent=[t0, nt, -edt.max(), edt.max()],  
                     aspect='auto', 
                     cmap='bwr', 
                     vmin=-1, 
@@ -747,7 +748,7 @@ def plot_correlation(corr_map, edt, df_pos, pos, fluo_chns, path_save, path_all,
             
             ax1 = plt.subplot(1, 1, 1)
             plt.imshow(np.hstack([corr_map[t0:, ::-1, 0], corr_map[t0:, :, 0]]).transpose(), 
-                    extent=[0, nt, -edt.max(), edt.max()], 
+                    extent=[t0, nt, -edt.max(), edt.max()], 
                     aspect='auto', 
                     cmap='bwr', 
                     vmin=-1, 

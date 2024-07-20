@@ -61,7 +61,9 @@ exp_sum = pd.read_excel('../Notebooks/Exps_summary.xlsx')
 exp_sum['formatted_dates'] = exp_sum['Date'].dt.strftime('%Y_%m_%d')
 positions = pd.read_excel('../Notebooks/Positions.xlsx')
 
-for i in range(len(exp_sum)):
+df = pd.read_excel('../Notebooks/data_processed.xlsx')
+
+for i in [12]:#exp_sum.index.values:
     exp_date = exp_sum.loc[i,'formatted_dates']
     vector = exp_sum.loc[i,'DNA']
     scope_name = exp_sum.loc[i,'Machine']
@@ -85,8 +87,14 @@ for i in range(len(exp_sum)):
         fluo_chns = 3
     # loop to perform the functions contour_mask, average_growth, compute_er to each
     # position (colony) selected from an experiment
-    #for pos in poss:
-    for pos in [14,15,16]:
+    for pos in poss:
+    #for pos in [14,15,16]:
+        t0 = positions[(positions.Date == exp_sum.loc[i, 'Date']) & 
+        (positions.DNA == vector) & 
+        (positions.Machine == scope_name) & 
+        (positions.Quality == 'Very good')& 
+        (positions.Position == pos)]
+
         print(f"Pos {pos}")
         print(f"{exp_date}_{scopes[scope_name]}_{vector}")
         fname = f'{exp_date}_10x_1.0x_{dnas[vector]}_{scopes[scope_name]}_Pos{pos}.ome.tif'
@@ -111,10 +119,10 @@ for i in range(len(exp_sum)):
         if not os.path.exists(os.path.join(path, folder_velocity)):
             os.makedirs(os.path.join(path, folder_velocity))
         
-        im_all = imread(path_im)
+        #im_all = imread(path_im)
         #im_ph = im_all[:,:,:,ph_chn].astype(float)
         #im_yfp = im_all[:,:,:,yfp_chn].astype(float)
-        im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
+        #im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
         edt_path = os.path.join(path_results,'edt.npy')
         edt = np.load(os.path.join(edt_path))
         #edt = edt[:,:,:]
@@ -154,9 +162,14 @@ for i in range(len(exp_sum)):
         
         # process velocity
         #process_velocity(path, fname, folder_velocity, folder_results, folder_masks, pos, start_frame, step)
-        t0 = 0
-        tf = 60
-        #fit_velocity(edt, t0, tf, path_results, path_graphs)
+        t0 = int(df[(df['Date'].dt.strftime('%Y_%m_%d') == exp_date) & 
+            (df.Machine == scope_name) & 
+            (df.Position == pos)]['vel_fit_start'].values[0])
+
+        tf = int(df[(df['Date'].dt.strftime('%Y_%m_%d') == exp_date) & 
+            (df.Machine == scope_name) & 
+            (df.Position == pos)]['vel_fit_end'].values[0])
+        fit_velocity(edt, t0, tf, path_results, path_graphs)
         
         ################
         # Kymo
@@ -165,9 +178,11 @@ for i in range(len(exp_sum)):
         rw = 16
         rs = np.linspace(rw, edt.max(), nr)
 
-        kymo = compute_kymo(im_fluo, edt, nr, rw)
-        dlkymo = compute_dlkymo(kymo, nr, fluo_chns)
-        plot_fluo_ratio(dlkymo, edt, path, rs, pos, fluo_chns)
+        #kymo = compute_kymo(im_fluo, edt, nr, rw)
+        #np.save(os.path.join(path_results, 'kymo.npy'), kymo)
+        #dlkymo = compute_dlkymo(kymo, nr, fluo_chns)
+        #np.save(os.path.join(path_results, 'dlrho.npy'), dlkymo)
+        #plot_fluo_ratio(dlkymo, edt, path, rs, pos, fluo_chns)
           
         ####################
         # Correlation
@@ -194,11 +209,12 @@ for i in range(len(exp_sum)):
         ### Some cleaning
         del edt
         #del corr_map
-        del im_all
+        #del im_all
         #del im_ph
-        del im_fluo
+        #del im_fluo
         #del mean_map
-
+        #del kymo
+        #del dlkymo
         # compute_er
         #er, edt_reg, sfluo, dsfluo = compute_er(im_all, pos, path, folder_results, fname, ph_chn)
 
