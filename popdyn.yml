@@ -13,4 +13,5 @@ dependencies:
   - python=3.8
   - tensorflow
   - numba
+  - statsmodels
 #  - infotracking
