@@ -63,7 +63,7 @@ positions = pd.read_excel('../Notebooks/Positions.xlsx')
 
 df = pd.read_excel('../Notebooks/data_processed.xlsx')
 
-for i in [12]:#exp_sum.index.values:
+for i in [0]:#exp_sum.index.values:
     exp_date = exp_sum.loc[i,'formatted_dates']
     vector = exp_sum.loc[i,'DNA']
     scope_name = exp_sum.loc[i,'Machine']
@@ -87,7 +87,7 @@ for i in [12]:#exp_sum.index.values:
         fluo_chns = 3
     # loop to perform the functions contour_mask, average_growth, compute_er to each
     # position (colony) selected from an experiment
-    for pos in poss:
+    for pos in [7]:#poss:
     #for pos in [14,15,16]:
         t0 = positions[(positions.Date == exp_sum.loc[i, 'Date']) & 
         (positions.DNA == vector) & 
@@ -119,8 +119,8 @@ for i in [12]:#exp_sum.index.values:
         if not os.path.exists(os.path.join(path, folder_velocity)):
             os.makedirs(os.path.join(path, folder_velocity))
         
-        #im_all = imread(path_im)
-        #im_ph = im_all[:,:,:,ph_chn].astype(float)
+        im_all = imread(path_im)
+        im_ph = im_all[:,:,:,ph_chn].astype(float)
         #im_yfp = im_all[:,:,:,yfp_chn].astype(float)
         #im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
         edt_path = os.path.join(path_results,'edt.npy')
@@ -146,7 +146,7 @@ for i in [12]:#exp_sum.index.values:
         #################
         # average_growth
         #################
-        #average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
+        average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
 
         ####################
         # Velocity profile
@@ -162,6 +162,7 @@ for i in [12]:#exp_sum.index.values:
         
         # process velocity
         #process_velocity(path, fname, folder_velocity, folder_results, folder_masks, pos, start_frame, step)
+        """
         t0 = int(df[(df['Date'].dt.strftime('%Y_%m_%d') == exp_date) & 
             (df.Machine == scope_name) & 
             (df.Position == pos)]['vel_fit_start'].values[0])
@@ -170,6 +171,7 @@ for i in [12]:#exp_sum.index.values:
             (df.Machine == scope_name) & 
             (df.Position == pos)]['vel_fit_end'].values[0])
         fit_velocity(edt, t0, tf, path_results, path_graphs)
+        """
         
         ################
         # Kymo
@@ -209,8 +211,8 @@ for i in [12]:#exp_sum.index.values:
         ### Some cleaning
         del edt
         #del corr_map
-        #del im_all
-        #del im_ph
+        del im_all
+        del im_ph
         #del im_fluo
         #del mean_map
         #del kymo
