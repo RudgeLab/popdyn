@@ -820,7 +820,7 @@ def get_rho_center(im_all, edt, fluo_chns, rfp_chn, yfp_chn, cfp_chn, path_resul
 
 def fit_velocity(edt, t0, tf, path_results, path_graphs):
     # Fit an exponential decay model to the velocity data
-    def residual_func(edt, nvmag, nt, nx, ny):
+    def residual_func(edt, svmag, nt, nx, ny):
         def residuals(x):
             r0 = np.exp(x[0])
             C = 0  # x[1]
@@ -828,16 +828,19 @@ def fit_velocity(edt, t0, tf, path_results, path_graphs):
             for frame in range(0,nt):
                 for ix in range(nx):
                     for iy in range(ny):
-                        if not np.isnan(nvmag[frame, ix, iy]) and vfront[frame] > 1:
+                        if not np.isnan(svmag[frame, ix, iy]) and vfront[frame] > 1:
                             r = edt[frame, ix * 32:ix * 32 + 64, iy * 32:iy * 32 + 64]
                             #r = edt[t, ix * 16:ix * 16 + 32, iy * 16:iy * 16 + 32]
                             R = rmax[t]
-                            B = R / ((R - r0) + r0 * np.exp(-R / r0))    
-                            model_vmag = B * (((R - r - r0) * np.exp(-r / r0) + r0 * np.exp(-R / r0)) / (R - r))
+                            B = R / ((R - r0) + r0 * np.exp(-R / r0))
+                            model_vmag = B * (((R - r - r0) * np.exp(-r / r0) + r0 * np.exp(-R / r0)) / (R - r)) # vr / vfront
                             #B = 1 / (1 - np.exp(-rmax[t] / r0))
                             #model_vmag = 1 + B * (np.exp(-r / r0) - 1)                    
-                            mean_model_vmag = vfront[frame] * np.nanmean(model_vmag)
-                            res.append(mean_model_vmag - nvmag[frame, ix, iy])
+                            mean_model_vmag = vfront[frame] * np.nanmean(model_vmag) # mean(vr) to the radius (?), that would be 0, its the average of the block
+                            res.append(mean_model_vmag - svmag[frame, ix, iy])
+                            # when movel_vmag is normalized
+                            #res.append(mean_model_vmag - nvmag[frame, ix, iy]) 
+
             return res
         return residuals
     
@@ -855,7 +858,7 @@ def fit_velocity(edt, t0, tf, path_results, path_graphs):
     vfront = vfront[idx]
     rmax = rmax[idx]
 
-    svmag = np.zeros_like(vmag) + np.nan
+    svmag = np.zeros_like(vmag) + np.nan ## smoothed?
     for t in range(0,nt):
         for ix in range(1, nx - 1):
             for iy in range(1, ny - 1):
@@ -914,11 +917,15 @@ def fit_velocity(edt, t0, tf, path_results, path_graphs):
 
         plt.title(f't = {idx[t]}')
         plt.xlabel('Radial position')
-        plt.ylabel('$v/v_{front}$')
+        plt.ylabel('$v_r(r)$')
+        # when svmag is normalized by vfront
+        #plt.ylabel('$v/v_{front}$')
     plt.tight_layout()
     plt.savefig(os.path.join(path_graphs, 'vfront_rad.png'))
     plt.close()
 
+    ##
+    ## Corr plot, line slope 1 of model and data as points
     y_model = np.zeros((0,))
     y_data = np.zeros((0,))
     for t in range(0,nt):
@@ -952,6 +959,9 @@ def fit_velocity(edt, t0, tf, path_results, path_graphs):
     np.save(os.path.join(path_results, 'y_data.npy'), y_data)
     np.save(os.path.join(path_results, 'svmag.npy'), svmag)
 
+
+    ##
+    ## Compute mu0 and plot it
     mu0 = np.zeros((nt,))
     for t in range(t0,nt):
 
