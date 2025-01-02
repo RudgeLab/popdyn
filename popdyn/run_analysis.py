@@ -35,7 +35,8 @@ with open('metadata.json') as f:
 #path_ext = '/home/guillermo/Microscopy'
 #path_ext = '/mnt/ff9e5a34-3696-46e4-8fa8-0171539135be'
 #path_ext = '/media/c1046372/Expansion/Thesis GY/3. Analyzed files/'
-path_ext = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
+#path_ext = '/media/guillermo/Expansion/Thesis GY/3. Analyzed files'
+path_ext = '/Volumes/Expansion/Thesis GY/3. Analyzed files'
 #exp_date = '2023_11_15'
 #vector = 'pLPT20&pLPT41'
 #scope_name = 'Ti scope'
@@ -63,7 +64,7 @@ positions = pd.read_excel('../Notebooks/Positions.xlsx')
 
 df = pd.read_excel('../Notebooks/data_processed.xlsx')
 
-for i in [4]:#exp_sum.index.values:
+for i in [6]:#exp_sum.index.values:
     exp_date = exp_sum.loc[i,'formatted_dates']
     vector = exp_sum.loc[i,'DNA']
     scope_name = exp_sum.loc[i,'Machine']
@@ -87,7 +88,7 @@ for i in [4]:#exp_sum.index.values:
         fluo_chns = 3
     # loop to perform the functions contour_mask, average_growth, compute_er to each
     # position (colony) selected from an experiment
-    for pos in [3]:#poss:
+    for pos in [0]:#poss:
     #for pos in [14,15,16]:
         t0 = positions[(positions.Date == exp_sum.loc[i, 'Date']) & 
         (positions.DNA == vector) & 
@@ -119,8 +120,8 @@ for i in [4]:#exp_sum.index.values:
         if not os.path.exists(os.path.join(path, folder_velocity)):
             os.makedirs(os.path.join(path, folder_velocity))
         
-        #im_all = imread(path_im)
-        #im_ph = im_all[:,:,:,ph_chn].astype(float)
+        im_all = imread(path_im)
+        im_ph = im_all[:,:,:,ph_chn].astype(float)
         #im_yfp = im_all[:,:,:,yfp_chn].astype(float)
         #im_fluo = im_all[:,:,:,:fluo_chns].astype(float)
         #edt_path = os.path.join(path_results,'edt.npy')
@@ -141,12 +142,12 @@ for i in [4]:#exp_sum.index.values:
         radj = metadata[scope_name][exp_date][str(pos)]['radj']
         #t0 = metadata[scope_name][exp_date][str(pos)]['vini']
         #tf = metadata[scope_name][exp_date][str(pos)]['vend']
-        #contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
+        contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_masks, path_masks, radj)
         
         #################
         # average_growth
         #################
-        average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
+        #average_growth(path_masks, step, pos, path, folder_results, folder_graphs)
 
         ####################
         # Velocity profile
@@ -211,8 +212,8 @@ for i in [4]:#exp_sum.index.values:
         ### Some cleaning
         #del edt
         #del corr_map
-        #del im_all
-        #del im_ph
+        del im_all
+        del im_ph
         #del im_fluo
         #del mean_map
         #del kymo

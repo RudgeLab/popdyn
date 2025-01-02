@@ -22,8 +22,8 @@ from scipy.ndimage import distance_transform_edt, gaussian_filter
 from scipy.optimize import fmin, least_squares
 from scipy.signal import savgol_filter
 from scipy.io import savemat
-import infotracking
-from infotracking import Ensemble, infotheory
+#import infotracking
+#from infotracking import Ensemble, infotheory
 
 def make_video(images_folder,  video_name):
     """
@@ -112,7 +112,11 @@ def contour_mask(im_ph, start_frame, step, pos, cx, cy, radius, path, folder_mas
         plt.imshow(f, cmap='gray')
         plt.plot(init[:,1], init[:,0], 'r--')
         plt.plot(snake[:,1], snake[:,0], 'g-')
-        plt.savefig(os.path.join(path, folder_masks,f"temp_pos{pos}",'contour_%03d.png'%t))
+        plt.axis('off')
+        plt.savefig(os.path.join(path, folder_masks,f"temp_pos{pos}",'contour_%03d.png'%t), 
+                    dpi=300,
+                    bbox_inches='tight',
+                    pad_inches=0)
         plt.close()
 
     imsave(path_masks, mask_out>0)
